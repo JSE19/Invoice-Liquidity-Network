@@ -76,6 +76,14 @@ ILN is built natively on Stellar for a reason:
 
 > Mainnet deployment coming after audit. Do not use with real funds until then.
 
+## JavaScript/TypeScript SDK
+
+The repository now includes a typed SDK package at [sdk/README.md](/Users/mac/Desktop/Learning-folder/Invoice-Liquidity-Network/sdk/README.md) with browser Freighter signing support and Node.js keypair signing.
+
+```bash
+npm install @invoice-liquidity/sdk
+```
+
 ---
 
 ## Repository Structure
