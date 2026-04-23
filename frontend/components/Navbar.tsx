@@ -3,11 +3,9 @@
 import { useTheme } from "../hooks/useTheme";
 import NotificationBell from "./NotificationBell";
 import WalletButton from "./WalletButton";
-import { useAccount } from "wagmi";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { isConnected, address } = useAccount();
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-outline-variant/15 shadow-sm h-20 transition-colors duration-300">
@@ -44,7 +42,7 @@ export default function Navbar() {
           </button>
 
           {/* 🔔 ONLY SHOW WHEN WALLET IS CONNECTED */}
-          {isConnected && address && <NotificationBell />}
+          {/* {isConnected && address && <NotificationBell />} */}
 
           <WalletButton />
         </div>
