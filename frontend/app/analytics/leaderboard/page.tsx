@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/context/WalletContext";
 
 type LeaderboardItem = {
   address: string;
@@ -15,7 +15,7 @@ export default function LeaderboardPage() {
   const [data, setData] = useState<LeaderboardItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { address } = useAccount();
+  const { address } = useWallet();
 
   useEffect(() => {
     const fetchData = async () => {

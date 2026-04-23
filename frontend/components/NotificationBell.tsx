@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "../context/WalletContext";
 import NotificationDrawer from "./NotificationDrawer";
 
 export default function NotificationBell() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);

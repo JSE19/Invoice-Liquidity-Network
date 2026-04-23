@@ -5,7 +5,7 @@ import { useWallet } from "../context/WalletContext";
 import { useToast } from "../context/ToastContext";
 import { getAllInvoices, fundInvoice, Invoice } from "../utils/soroban";
 import { formatUSDC, formatAddress, formatDate, calculateYield } from "../utils/format";
-import { rpc } from "@stellar/stellar-sdk";
+import { rpc, TransactionBuilder } from "@stellar/stellar-sdk";
 import { RPC_URL } from "../constants";
 
 const server = new rpc.Server(RPC_URL);
@@ -56,7 +56,9 @@ export default function LPDashboard() {
       const tx = await fundInvoice(address, selectedInvoice.id);
       const signedTxXdr = await signTx(tx.toXDR());
       
-      const sendResult = await server.sendTransaction(rpc.Transaction.fromXDR(signedTxXdr, "Test SDF Network ; September 2015"));
+      const sendResult = await server.sendTransaction(
+        TransactionBuilder.fromXDR(signedTxXdr, "Test SDF Network ; September 2015")
+      );
       
       if (sendResult.status === "PENDING") {
         let txStatus = await server.getTransaction(sendResult.hash);

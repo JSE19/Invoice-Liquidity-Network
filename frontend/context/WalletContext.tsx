@@ -20,6 +20,43 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const STORAGE_KEY = "iln_wallet_address";
 
+function extractConnectionState(result: unknown): boolean {
+  if (typeof result === "boolean") {
+    return result;
+  }
+
+  if (result && typeof result === "object" && "isConnected" in result) {
+    return Boolean((result as { isConnected?: unknown }).isConnected);
+  }
+
+  return false;
+}
+
+function extractNetworkName(result: unknown): string | null {
+  if (typeof result === "string") {
+    return result;
+  }
+
+  if (result && typeof result === "object" && "network" in result) {
+    const network = (result as { network?: unknown }).network;
+    return typeof network === "string" ? network : null;
+  }
+
+  return null;
+}
+
+function extractAllowedState(result: unknown): boolean {
+  if (typeof result === "boolean") {
+    return result;
+  }
+
+  if (result && typeof result === "object" && "isAllowed" in result) {
+    return Boolean((result as { isAllowed?: unknown }).isAllowed);
+  }
+
+  return false;
+}
+
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { addToast, updateToast } = useToast();
   const [address, setAddress] = useState<string | null>(null);
@@ -29,8 +66,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const checkNetwork = useCallback(async () => {
     try {
-      const network = await getNetwork();
-      console.log("Current network:", network);
+      const network = extractNetworkName(await getNetwork());
       if (network && network.toUpperCase() !== NETWORK_NAME) {
         setNetworkMismatch(true);
         return false;
@@ -45,8 +81,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const checkConnection = useCallback(async () => {
     try {
-      const installed = await isConnected();
-      setIsInstalled(!!installed);
+      const installed = extractConnectionState(await isConnected());
+      setIsInstalled(installed);
       
       if (installed) {
         const savedAddress = localStorage.getItem(STORAGE_KEY);
@@ -81,7 +117,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const toastId = addToast({ type: "pending", title: "Connecting to Freighter..." });
     
     try {
-      const installed = await isConnected();
+      const installed = extractConnectionState(await isConnected());
       if (!installed) {
         const msg = "Freighter not installed. Please install the extension.";
         setError(msg);
@@ -90,10 +126,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
 
-      console.log("Requesting authorization...");
-      const isAllowed = await setAllowed();
+      const isAllowed = extractAllowedState(await setAllowed());
       if (isAllowed) {
-        console.log("Authorized. Getting address...");
         const { address, error: freighterError } = await getAddress();
         
         if (freighterError) {
@@ -103,7 +137,6 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         if (address) {
-          console.log("Connected to address:", address);
           setAddress(address);
           localStorage.setItem(STORAGE_KEY, address);
           
@@ -147,7 +180,20 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const signed = await signTransaction(txXdr, {
       networkPassphrase: NETWORK_PASSPHRASE,
     });
-    return signed;
+
+    if (typeof signed === "string") {
+      return signed;
+    }
+
+    if (signed.error) {
+      throw new Error(String(signed.error));
+    }
+
+    if (signed.signedTxXdr) {
+      return signed.signedTxXdr;
+    }
+
+    throw new Error("Freighter did not return a signed transaction.");
   };
 
   return (

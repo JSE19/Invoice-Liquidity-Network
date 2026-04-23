@@ -1,6 +1,6 @@
 "use client";
 
-import { rpc } from "@stellar/stellar-sdk";
+import { rpc, TransactionBuilder } from "@stellar/stellar-sdk";
 import { useCallback, useEffect, useState } from "react";
 import Footer from "../../components/Footer";
 import Navbar from "../../components/Navbar";
@@ -333,7 +333,7 @@ export default function PayerDashboard() {
       const signedXdr = await signTx(tx.toXDR());
 
       const sendResult = await server.sendTransaction(
-        rpc.Transaction.fromXDR(signedXdr, "Test SDF Network ; September 2015")
+        TransactionBuilder.fromXDR(signedXdr, "Test SDF Network ; September 2015")
       );
 
       if (sendResult.status === "PENDING") {
