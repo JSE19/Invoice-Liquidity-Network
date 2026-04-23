@@ -54,6 +54,7 @@ export async function getInvoiceCount(): Promise<bigint> {
           auth: [],
         })
       )
+      .setTimeout(0)
       .build()
   );
 
@@ -88,6 +89,7 @@ export async function getInvoice(id: bigint): Promise<Invoice> {
           auth: [],
         })
       )
+      .setTimeout(0)
       .build()
   );
 
@@ -117,15 +119,27 @@ function parseStatus(status: any): string {
 }
 
 export async function getAllInvoices(): Promise<Invoice[]> {
-  const count = await getInvoiceCount();
   const invoices: Invoice[] = [];
-  for (let i = BigInt(1); i <= count; i++) {
+  let i = BigInt(1);
+  let consecutiveFailures = 0;
+  
+  // Attempt to fetch invoices until we hit a failure
+  // In Soroban, persistent storage IDs are typically sequential if implemented as such
+  // We'll stop after a single failure since get_invoice throws if not found
+  while (consecutiveFailures < 1) {
     try {
       const invoice = await getInvoice(i);
       invoices.push(invoice);
+      i++;
+      consecutiveFailures = 0; // reset on success
     } catch (e) {
-      console.error(`Failed to fetch invoice ${i}`, e);
+      // If i=1 and it fails, it might mean there are no invoices at all
+      // or the contract doesn't have any data yet.
+      consecutiveFailures++;
     }
+    
+    // Safety break to prevent infinite loop in case of weirdness
+    if (i > BigInt(1000)) break; 
   }
   return invoices;
 }

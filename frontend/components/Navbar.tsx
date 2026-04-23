@@ -1,12 +1,10 @@
 "use client";
 
 import { useTheme } from "../hooks/useTheme";
-import { useWallet } from "../context/WalletContext";
-import { formatAddress } from "../utils/format";
+import WalletButton from "./WalletButton";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { address, isConnected, connect, disconnect } = useWallet();
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-outline-variant/15 shadow-sm h-20 transition-colors duration-300">
@@ -49,27 +47,7 @@ export default function Navbar() {
             </span>
           </button>
           
-          {isConnected ? (
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex flex-col items-end">
-                <span className="text-[10px] font-bold text-primary uppercase">Connected</span>
-                <span className="text-xs font-mono text-on-surface-variant">{formatAddress(address!)}</span>
-              </div>
-              <button 
-                onClick={disconnect}
-                className="bg-surface-variant text-on-surface-variant px-4 py-2 rounded-lg text-sm font-bold hover:bg-surface-dim transition-all active:scale-95"
-              >
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <button 
-              onClick={connect}
-              className="bg-primary text-surface-container-lowest px-6 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-primary/90 transition-all active:scale-95 duration-150"
-            >
-              Connect Wallet
-            </button>
-          )}
+          <WalletButton />
         </div>
       </div>
     </nav>

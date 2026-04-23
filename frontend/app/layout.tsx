@@ -53,11 +53,11 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${newsreader.variable} antialiased bg-background text-foreground transition-colors duration-300 selection:bg-primary-container selection:text-on-primary-container`}
       >
-        <WalletProvider>
-          <ToastProvider>
+        <ToastProvider>
+          <WalletProvider>
             {children}
-          </ToastProvider>
-        </WalletProvider>
+          </WalletProvider>
+        </ToastProvider>
       </body>
     </html>
   );

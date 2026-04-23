@@ -1,11 +1,16 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { isConnected, getAddress, setAllowed, signTransaction } from "@stellar/freighter-api";
+import { isConnected, getAddress, setAllowed, signTransaction, getNetwork } from "@stellar/freighter-api";
+import { NETWORK_NAME, NETWORK_PASSPHRASE } from "../constants";
+import { useToast } from "./ToastContext";
 
 interface WalletContextType {
   address: string | null;
   isConnected: boolean;
+  isInstalled: boolean;
+  error: string | null;
+  networkMismatch: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
   signTx: (txXdr: string) => Promise<string>;
@@ -13,56 +18,151 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [address, setAddress] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+const STORAGE_KEY = "iln_wallet_address";
 
-  const checkConnection = useCallback(async () => {
-    const connected = await isConnected();
-    if (connected) {
-      try {
-        const { address } = await getAddress();
-        if (address) {
-          setAddress(address);
-          setConnected(true);
-        }
-      } catch (e) {
-        console.error("Failed to get address", e);
+export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { addToast, updateToast } = useToast();
+  const [address, setAddress] = useState<string | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [networkMismatch, setNetworkMismatch] = useState(false);
+
+  const checkNetwork = useCallback(async () => {
+    try {
+      const network = await getNetwork();
+      console.log("Current network:", network);
+      if (network && network.toUpperCase() !== NETWORK_NAME) {
+        setNetworkMismatch(true);
+        return false;
       }
+      setNetworkMismatch(false);
+      return true;
+    } catch (e) {
+      console.error("Failed to get network", e);
+      return false;
     }
   }, []);
+
+  const checkConnection = useCallback(async () => {
+    try {
+      const installed = await isConnected();
+      setIsInstalled(!!installed);
+      
+      if (installed) {
+        const savedAddress = localStorage.getItem(STORAGE_KEY);
+        if (savedAddress) {
+          const { address } = await getAddress();
+          if (address && address === savedAddress) {
+            setAddress(address);
+            await checkNetwork();
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Check connection failed", e);
+    }
+  }, [checkNetwork]);
 
   useEffect(() => {
     checkConnection();
   }, [checkConnection]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (address) checkNetwork();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [address, checkNetwork]);
+
   const connect = async () => {
+    setError(null);
+    const toastId = addToast({ type: "pending", title: "Connecting to Freighter..." });
+    
     try {
+      const installed = await isConnected();
+      if (!installed) {
+        const msg = "Freighter not installed. Please install the extension.";
+        setError(msg);
+        updateToast(toastId, { type: "error", title: "Connection Failed", message: msg });
+        window.open("https://www.freighter.app/", "_blank");
+        return;
+      }
+
+      console.log("Requesting authorization...");
       const isAllowed = await setAllowed();
       if (isAllowed) {
-        const { address } = await getAddress();
-        setAddress(address);
-        setConnected(true);
+        console.log("Authorized. Getting address...");
+        const { address, error: freighterError } = await getAddress();
+        
+        if (freighterError) {
+          setError(freighterError);
+          updateToast(toastId, { type: "error", title: "Connection Failed", message: freighterError });
+          return;
+        }
+
+        if (address) {
+          console.log("Connected to address:", address);
+          setAddress(address);
+          localStorage.setItem(STORAGE_KEY, address);
+          
+          const isCorrectNetwork = await checkNetwork();
+          if (!isCorrectNetwork) {
+            const networkMsg = `Please switch Freighter to ${NETWORK_NAME}`;
+            setError(networkMsg);
+            updateToast(toastId, { type: "error", title: "Network Mismatch", message: networkMsg });
+          } else {
+            updateToast(toastId, { type: "success", title: "Connected", message: `Connected as ${address.substring(0, 6)}...` });
+          }
+        }
+      } else {
+        const msg = "Connection rejected by user.";
+        setError(msg);
+        updateToast(toastId, { type: "error", title: "Connection Failed", message: msg });
       }
-    } catch (e) {
-      console.error("Connection failed", e);
+    } catch (e: any) {
+      console.error("Connection error:", e);
+      const msg = e.message || "Connection failed";
+      setError(msg);
+      updateToast(toastId, { type: "error", title: "Connection Failed", message: msg });
     }
   };
 
   const disconnect = () => {
     setAddress(null);
-    setConnected(false);
+    setNetworkMismatch(false);
+    setError(null);
+    localStorage.removeItem(STORAGE_KEY);
+    addToast({ type: "success", title: "Disconnected" });
   };
 
   const signTx = async (txXdr: string) => {
+    const isCorrectNetwork = await checkNetwork();
+    if (!isCorrectNetwork) {
+      const msg = `Network mismatch. Please switch to ${NETWORK_NAME}`;
+      addToast({ type: "error", title: "Transaction Failed", message: msg });
+      throw new Error(msg);
+    }
     const signed = await signTransaction(txXdr, {
-      networkPassphrase: "Test SDF Network ; September 2015",
+      networkPassphrase: NETWORK_PASSPHRASE,
     });
     return signed;
   };
 
   return (
-    <WalletContext.Provider value={{ address, isConnected: connected, connect, disconnect, signTx }}>
+    <WalletContext.Provider 
+      value={{ 
+        address, 
+        isConnected: !!address, 
+        isInstalled,
+        error,
+        networkMismatch,
+        connect, 
+        disconnect, 
+        signTx 
+      }}
+    >
       {children}
     </WalletContext.Provider>
   );
