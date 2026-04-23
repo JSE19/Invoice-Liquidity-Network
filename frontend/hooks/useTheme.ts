@@ -1,25 +1,18 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
-
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    setMounted(true);
-    const storedTheme = localStorage.getItem("theme") as Theme | null;
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // Read from localStorage or media query on mount
+    const storedTheme = localStorage.getItem("theme");
+    const prefDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-    if (storedTheme) {
-      setTheme(storedTheme);
-      document.documentElement.setAttribute("data-theme", storedTheme);
-    } else if (systemPrefersDark) {
-      setTheme("dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.setAttribute("data-theme", "light");
-    }
+    const initialTheme = storedTheme === "dark" || (!storedTheme && prefDark) ? "dark" : "light";
+    setTheme(initialTheme);
+    document.documentElement.setAttribute("data-theme", initialTheme);
   }, []);
 
   const toggleTheme = () => {
@@ -29,5 +22,5 @@ export function useTheme() {
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
-  return { theme, toggleTheme, mounted };
+  return { theme, toggleTheme };
 }

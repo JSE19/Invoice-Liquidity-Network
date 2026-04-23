@@ -38,7 +38,7 @@ export default function HowItWorks() {
         </div>
 
         {/* Flow Diagram */}
-        <div className="bg-surface-container-highest p-8 md:p-12 rounded-xl flex flex-col md:flex-row items-center justify-between gap-8 border border-white/40">
+        <div className="bg-surface-container-highest p-8 md:p-12 rounded-xl flex flex-col md:flex-row items-center justify-between gap-8 border border-outline-variant/40">
           <div className="text-center">
             <div className="text-xs font-bold mb-2 uppercase text-on-surface-variant">
               Liquidity Provider
@@ -48,7 +48,7 @@ export default function HowItWorks() {
           </div>
           <div className="flex-1 h-[2px] bg-outline-variant relative flex items-center justify-center w-full">
             <span className="absolute right-0 w-2 h-2 bg-outline-variant rotate-45 border-t border-r -mr-1"></span>
-            <div className="bg-primary text-white text-[10px] px-2 py-1 rounded-full -mt-8 font-bold whitespace-nowrap">
+            <div className="bg-primary text-surface-container-lowest text-[10px] px-2 py-1 rounded-full -mt-8 font-bold whitespace-nowrap">
               DISCOUNT: 3%
             </div>
           </div>

@@ -38,7 +38,7 @@ export default function OpenSource() {
             </p>
           </div>
           <div className="flex gap-4">
-            <button className="bg-primary text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors">
+            <button className="bg-primary text-surface-container-lowest px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors">
               Explore GitHub
             </button>
           </div>
@@ -47,7 +47,7 @@ export default function OpenSource() {
           {cards.map((card, index) => (
             <div
               key={index}
-              className="p-8 bg-white/5 rounded-xl border border-on-surface/10 group hover:border-primary-container transition-colors"
+              className="p-8 bg-surface-container-lowest/5 rounded-xl border border-on-surface/10 group hover:border-primary-container transition-colors"
             >
               <div className="flex justify-between items-start mb-6">
                 <span className="material-symbols-outlined text-primary-container">
