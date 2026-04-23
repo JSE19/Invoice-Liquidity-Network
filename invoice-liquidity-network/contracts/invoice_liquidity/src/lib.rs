@@ -8,7 +8,7 @@ use soroban_sdk::{contract, contractimpl, token::Client as TokenClient, Address,
 use errors::ContractError;
 use invoice::{
     get_invoice_funders, get_payer_score, invoice_exists, load_invoice, next_invoice_id,
-    save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceStatus, StorageKey,
+    save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceParams, InvoiceStatus, StorageKey,
 };
 
 // ----------------------------------------------------------------
@@ -148,6 +148,34 @@ impl InvoiceLiquidityContract {
             .publish((soroban_sdk::symbol_short!("submitted"),), id);
 
         Ok(id)
+    }
+
+    // ------------------------------------------------------------
+    // submit_invoices_batch
+    // ------------------------------------------------------------
+    pub fn submit_invoices_batch(
+        env: Env,
+        invoices: Vec<InvoiceParams>,
+    ) -> Result<Vec<u64>, ContractError> {
+        if invoices.len() > 10 {
+            return Err(ContractError::BatchTooLarge);
+        }
+
+        let mut ids = Vec::new(&env);
+        for params in invoices.iter() {
+            let id = Self::submit_invoice(
+                env.clone(),
+                params.freelancer,
+                params.payer,
+                params.amount,
+                params.due_date,
+                params.discount_rate,
+                params.token,
+            )?;
+            ids.push_back(id);
+        }
+        
+        Ok(ids)
     }
 
     // ------------------------------------------------------------

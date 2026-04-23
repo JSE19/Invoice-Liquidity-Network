@@ -144,6 +144,97 @@ fn test_submit_multiple_invoices_increment_ids() {
 }
 
 // ----------------------------------------------------------------
+// submit_invoices_batch
+// ----------------------------------------------------------------
+
+#[test]
+fn test_submit_invoices_batch_happy_path() {
+    let t = setup();
+    let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
+
+    let params = InvoiceParams {
+        freelancer: t.freelancer.clone(),
+        payer: t.payer.clone(),
+        amount: INVOICE_AMOUNT,
+        due_date,
+        discount_rate: DISCOUNT_RATE,
+        token: t.token.address.clone(),
+    };
+
+    let mut batch = Vec::new(&t.env);
+    batch.push_back(params.clone());
+    batch.push_back(params.clone());
+    batch.push_back(params.clone());
+
+    let ids = t.contract.submit_invoices_batch(&batch);
+
+    assert_eq!(ids.len(), 3);
+    assert_eq!(ids.get(0).unwrap(), 1);
+    assert_eq!(ids.get(1).unwrap(), 2);
+    assert_eq!(ids.get(2).unwrap(), 3);
+}
+
+#[test]
+fn test_submit_invoices_batch_rejects_over_limit() {
+    let t = setup();
+    let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
+
+    let params = InvoiceParams {
+        freelancer: t.freelancer.clone(),
+        payer: t.payer.clone(),
+        amount: INVOICE_AMOUNT,
+        due_date,
+        discount_rate: DISCOUNT_RATE,
+        token: t.token.address.clone(),
+    };
+
+    let mut batch = Vec::new(&t.env);
+    for _ in 0..11 {
+        batch.push_back(params.clone());
+    }
+
+    let result = t.contract.try_submit_invoices_batch(&batch);
+
+    assert_eq!(result, Err(Ok(ContractError::BatchTooLarge)));
+}
+
+#[test]
+fn test_submit_invoices_batch_atomicity_fail() {
+    let t = setup();
+    let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
+
+    let mut batch = Vec::new(&t.env);
+    
+    // Valid invoice
+    batch.push_back(InvoiceParams {
+        freelancer: t.freelancer.clone(),
+        payer: t.payer.clone(),
+        amount: INVOICE_AMOUNT,
+        due_date,
+        discount_rate: DISCOUNT_RATE,
+        token: t.token.address.clone(),
+    });
+
+    // Invalid invoice (amount = 0)
+    batch.push_back(InvoiceParams {
+        freelancer: t.freelancer.clone(),
+        payer: t.payer.clone(),
+        amount: 0,
+        due_date,
+        discount_rate: DISCOUNT_RATE,
+        token: t.token.address.clone(),
+    });
+
+    let result = t.contract.try_submit_invoices_batch(&batch);
+
+    assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
+    
+    // Verify no invoice was saved
+    assert_eq!(t.contract.get_invoice_count(), 0);
+}
+
+
+// ----------------------------------------------------------------
 // submit_invoice — validation errors
 // ----------------------------------------------------------------
 
