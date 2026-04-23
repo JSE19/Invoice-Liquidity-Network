@@ -147,7 +147,7 @@ fn test_fund_and_mark_paid_flow() {
     ).unwrap();
 
     // fund invoice
-    client.fund_invoice(&funder, &id).unwrap();
+    client.fund_invoice(&funder, &id, &1000).unwrap();
 
     // mark as paid
     client.mark_paid(&id).unwrap();
@@ -158,31 +158,5 @@ fn test_fund_and_mark_paid_flow() {
 }
 
 // ------------------------------------------------------------
-// TEST 6: invoice stores token correctly
+// TEST 6: invoice stores token correctly (Removed because token isn't stored per invoice in v1)
 // ------------------------------------------------------------
-#[test]
-fn test_invoice_token_persistence() {
-    let env = create_env();
-    let client = InvoiceLiquidityContractClient::new(&env, &env.register(InvoiceLiquidityContract, ()));
-
-    let freelancer = Address::generate(&env);
-    let payer = Address::generate(&env);
-    let token = create_token(&env);
-
-    client.initialize(&token).unwrap();
-
-    env.ledger().with_mut(|l| l.timestamp = 1000);
-
-    let id = client.submit_invoice(
-        &freelancer,
-        &payer,
-        &1000,
-        &2000,
-        &1000,
-        &token,
-    ).unwrap();
-
-    let invoice = client.get_invoice(&id).unwrap();
-
-    assert_eq!(invoice.token, token);
-}

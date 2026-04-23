@@ -93,6 +93,9 @@
                 },
                 {
                   "u32": 300
+                },
+                {
+                  "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
                 }
               ]
             }
@@ -124,6 +127,9 @@
                 },
                 {
                   "u32": 300
+                },
+                {
+                  "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
                 }
               ]
             }
@@ -155,6 +161,9 @@
                 },
                 {
                   "u32": 300
+                },
+                {
+                  "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
                 }
               ]
             }
@@ -325,6 +334,33 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "ApprovedToken"
+                  },
+                  {
+                    "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "bool": true
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "Invoice"
                   },
                   {
@@ -341,6 +377,14 @@
                     },
                     "val": {
                       "i128": "1000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "amount_funded"
+                    },
+                    "val": {
+                      "i128": "0"
                     }
                   },
                   {
@@ -445,6 +489,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "amount_funded"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "discount_rate"
                     },
                     "val": {
@@ -541,6 +593,14 @@
                     },
                     "val": {
                       "i128": "1000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "amount_funded"
+                    },
+                    "val": {
+                      "i128": "0"
                     }
                   },
                   {
@@ -646,6 +706,34 @@
             "contract_data": {
               "ext": "v0",
               "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "TokenList"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
               "key": "ledger_key_contract_instance",
               "durability": "persistent",
               "val": {
@@ -653,20 +741,7 @@
                   "executable": {
                     "wasm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                   },
-                  "storage": [
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Token"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
-                      }
-                    }
-                  ]
+                  "storage": null
                 }
               }
             }

@@ -3,19 +3,13 @@
 mod errors;
 mod invoice;
 
-use soroban_sdk::{
-    contract, contractimpl,
-    token::Client as TokenClient,
-    Address, Env, Vec,
-};
+use soroban_sdk::{contract, contractimpl, token::Client as TokenClient, Address, Env, Vec};
 
 use errors::ContractError;
 use invoice::{
     get_invoice_funders, get_payer_score, invoice_exists, load_invoice, next_invoice_id,
     save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceStatus, StorageKey,
 };
-
-
 
 // ----------------------------------------------------------------
 // CONTRACT
@@ -26,7 +20,6 @@ pub struct InvoiceLiquidityContract;
 
 #[contractimpl]
 impl InvoiceLiquidityContract {
-
     // ------------------------------------------------------------
     // initialize (multi-token aware)
     // ------------------------------------------------------------
@@ -62,7 +55,6 @@ impl InvoiceLiquidityContract {
         discount_rate: u32,
         token: Address,
     ) -> Result<u64, ContractError> {
-
         freelancer.require_auth();
 
         if amount <= 0 {
@@ -92,18 +84,16 @@ impl InvoiceLiquidityContract {
             amount,
             due_date,
             discount_rate,
-            status:     InvoiceStatus::Pending,
-            funder:     None,
-            funded_at:  None,
+            status: InvoiceStatus::Pending,
+            funder: None,
+            funded_at: None,
             amount_funded: 0,
         };
 
         save_invoice(&env, &invoice);
 
-        env.events().publish(
-            (soroban_sdk::symbol_short!("submitted"),),
-            id,
-        );
+        env.events()
+            .publish((soroban_sdk::symbol_short!("submitted"),), id);
 
         Ok(id)
     }
@@ -117,7 +107,6 @@ impl InvoiceLiquidityContract {
         invoice_id: u64,
         fund_amount: i128,
     ) -> Result<(), ContractError> {
-
         funder.require_auth();
 
         if !invoice_exists(&env, invoice_id) {
@@ -127,10 +116,10 @@ impl InvoiceLiquidityContract {
         let mut invoice = load_invoice(&env, invoice_id);
 
         match invoice.status {
-            InvoiceStatus::Paid      => return Err(ContractError::AlreadyPaid),
+            InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
-            InvoiceStatus::Funded    => return Err(ContractError::AlreadyFunded),
-            InvoiceStatus::Pending   | InvoiceStatus::PartiallyFunded => {} // all good
+            InvoiceStatus::Funded => return Err(ContractError::AlreadyFunded),
+            InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => {} // all good
         }
 
         if invoice.amount_funded + fund_amount > invoice.amount {
@@ -160,10 +149,11 @@ impl InvoiceLiquidityContract {
 
         // --- Update invoice state ---
         invoice.amount_funded += fund_amount;
-        
+
         if invoice.amount_funded == invoice.amount {
             // Fully funded — pay out to freelancer
-            let discount_amount = invoice.amount
+            let discount_amount = invoice
+                .amount
                 .checked_mul(discount_rate_as_i128(invoice.discount_rate))
                 .unwrap_or(0)
                 / 10_000;
@@ -191,11 +181,7 @@ impl InvoiceLiquidityContract {
     // ------------------------------------------------------------
     // mark_paid (USES invoice.token)
     // ------------------------------------------------------------
-    pub fn mark_paid(
-        env: Env,
-        invoice_id: u64,
-    ) -> Result<(), ContractError> {
-
+    pub fn mark_paid(env: Env, invoice_id: u64) -> Result<(), ContractError> {
         if !invoice_exists(&env, invoice_id) {
             return Err(ContractError::InvoiceNotFound);
         }
@@ -205,14 +191,17 @@ impl InvoiceLiquidityContract {
         invoice.payer.require_auth();
 
         match invoice.status {
-            InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => return Err(ContractError::NotFunded),
+            InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => {
+                return Err(ContractError::NotFunded)
+            }
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
             InvoiceStatus::Funded => {}
         }
 
         // Calculate total payout to all funders (principal + yield)
-        let discount_amount = invoice.amount
+        let discount_amount = invoice
+            .amount
             .checked_mul(discount_rate_as_i128(invoice.discount_rate))
             .unwrap_or(0)
             / 10_000;
@@ -232,8 +221,6 @@ impl InvoiceLiquidityContract {
             token.transfer(&contract_address, &funder_addr, &share);
         }
 
-
-
         invoice.status = InvoiceStatus::Paid;
 
         save_invoice(&env, &invoice);
@@ -243,10 +230,8 @@ impl InvoiceLiquidityContract {
         set_payer_score(&env, &invoice.payer, current_score + 1);
 
         // Emit event
-        env.events().publish(
-            (soroban_sdk::symbol_short!("paid"),),
-            invoice_id,
-        );
+        env.events()
+            .publish((soroban_sdk::symbol_short!("paid"),), invoice_id);
 
         Ok(())
     }
@@ -262,11 +247,7 @@ impl InvoiceLiquidityContract {
     //
     // Useful for frontends to display LP earnings history.
     // ----------------------------------------------------------------
-    pub fn claim_yield(
-        env:        Env,
-        invoice_id: u64,
-    ) -> Result<i128, ContractError> {
-
+    pub fn claim_yield(env: Env, invoice_id: u64) -> Result<i128, ContractError> {
         if !invoice_exists(&env, invoice_id) {
             return Err(ContractError::InvoiceNotFound);
         }
@@ -285,12 +266,11 @@ impl InvoiceLiquidityContract {
                 // Not settled yet — yield is pending, return 0
                 Ok(0)
             }
-            InvoiceStatus::Defaulted => {
-                Err(ContractError::InvoiceDefaulted)
-            }
+            InvoiceStatus::Defaulted => Err(ContractError::InvoiceDefaulted),
             InvoiceStatus::Paid => {
                 // Yield = the discount amount the LP earned
-                let yield_amount = invoice.amount
+                let yield_amount = invoice
+                    .amount
                     .checked_mul(discount_rate_as_i128(invoice.discount_rate))
                     .unwrap_or(0)
                     / 10_000;
@@ -305,12 +285,7 @@ impl InvoiceLiquidityContract {
     // Called by the LP if the invoice is not paid by the due date.
     // Reclaims the escrowed discount amount.
     // ----------------------------------------------------------------
-    pub fn claim_default(
-        env:        Env,
-        funder:     Address,
-        invoice_id: u64,
-    ) -> Result<(), ContractError> {
-
+    pub fn claim_default(env: Env, funder: Address, invoice_id: u64) -> Result<(), ContractError> {
         funder.require_auth();
 
         if !invoice_exists(&env, invoice_id) {
@@ -338,9 +313,11 @@ impl InvoiceLiquidityContract {
 
         // Invoice must be in Funded status
         match invoice.status {
-            InvoiceStatus::Funded    => {} // correct state
-            InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => return Err(ContractError::NotFunded),
-            InvoiceStatus::Paid      => return Err(ContractError::AlreadyPaid),
+            InvoiceStatus::Funded => {} // correct state
+            InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => {
+                return Err(ContractError::NotFunded)
+            }
+            InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
         }
 
@@ -350,7 +327,8 @@ impl InvoiceLiquidityContract {
         let contract_address = env.current_contract_address();
 
         // Calculate the discount amount that was kept in escrow
-        let discount_amount = invoice.amount
+        let discount_amount = invoice
+            .amount
             .checked_mul(discount_rate_as_i128(invoice.discount_rate))
             .unwrap_or(0)
             / 10_000;
@@ -372,10 +350,8 @@ impl InvoiceLiquidityContract {
         }
 
         // Emit event
-        env.events().publish(
-            (soroban_sdk::symbol_short!("defaulted"),),
-            invoice_id,
-        );
+        env.events()
+            .publish((soroban_sdk::symbol_short!("defaulted"),), invoice_id);
 
         Ok(())
     }
@@ -390,8 +366,8 @@ impl InvoiceLiquidityContract {
     // ----------------------------------------------------------------
     // suggested_discount_rate
     //
-    // Returns a suggested discount rate in basis points based on 
-    // payer's reputation score. 
+    // Returns a suggested discount rate in basis points based on
+    // payer's reputation score.
     // Higher score = lower risk = lower discount rate.
     // ----------------------------------------------------------------
     pub fn suggested_discount_rate(env: Env, payer: Address) -> u32 {
@@ -406,10 +382,7 @@ impl InvoiceLiquidityContract {
     // ----------------------------------------------------------------
     // get_invoice — read-only helper for frontends and tests
     // ----------------------------------------------------------------
-    pub fn get_invoice(
-        env:        Env,
-        invoice_id: u64,
-    ) -> Result<Invoice, ContractError> {
+    pub fn get_invoice(env: Env, invoice_id: u64) -> Result<Invoice, ContractError> {
         if !invoice_exists(&env, invoice_id) {
             return Err(ContractError::InvoiceNotFound);
         }
@@ -433,7 +406,11 @@ fn token_client<'a>(env: &'a Env, token: &'a Address) -> TokenClient<'a> {
 }
 
 fn usdc_client<'a>(env: &'a Env) -> TokenClient<'a> {
-    let list: Vec<Address> = env.storage().persistent().get(&StorageKey::TokenList).unwrap_or(Vec::new(env));
+    let list: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&StorageKey::TokenList)
+        .unwrap_or(Vec::new(env));
     let token = list.get(0).expect("contract not initialized");
     TokenClient::new(env, &token)
 }

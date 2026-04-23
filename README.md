@@ -1,5 +1,7 @@
 # Invoice Liquidity Network
 
+[![CI](https://github.com/Nursca/Invoice-Liquidity-Network/actions/workflows/ci.yml/badge.svg)](https://github.com/Nursca/Invoice-Liquidity-Network/actions/workflows/ci.yml)
+
 **Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
 
 Invoice Liquidity Network (ILN) is an open-source, decentralized invoice factoring protocol built on [Stellar](https://stellar.org) using [Soroban](https://soroban.stellar.org) smart contracts. Freelancers, creators, and SMEs can unlock the value of their outstanding invoices immediately, while DeFi liquidity providers earn yield by funding them at a discount.
