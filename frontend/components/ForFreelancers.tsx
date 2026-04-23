@@ -1,4 +1,23 @@
+"use client";
+
+import { useTheme } from "../hooks/useTheme";
+import { useToast } from "../context/ToastContext";
+
 export default function ForFreelancers() {
+  const { theme } = useTheme();
+  const { addToast, updateToast } = useToast();
+
+  const handleListOnNetwork = async () => {
+    const toastId = addToast({ type: "pending", title: "Submitting Invoice..." });
+    try {
+      // Simulate transaction delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      updateToast(toastId, { type: "success", title: "Invoice Listed", txHash: "4f8a9e2bc1...9d0" });
+    } catch (error) {
+      updateToast(toastId, { type: "error", title: "Listing Failed", message: "Transaction rejected." });
+    }
+  };
+
   const features = [
     {
       title: "Instant Liquidity",
@@ -42,7 +61,7 @@ export default function ForFreelancers() {
           </ul>
         </div>
         {/* Submission Mockup */}
-        <div className="bg-surface p-8 rounded-xl shadow-xl border border-outline-variant/10">
+        <div className="bg-surface-container-lowest p-8 rounded-xl shadow-xl border border-outline-variant/10">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">
               description
@@ -90,7 +109,10 @@ export default function ForFreelancers() {
                 <span className="font-bold text-primary">3.5%</span>
               </div>
             </div>
-            <button className="w-full bg-primary text-white py-4 rounded-lg font-bold mt-4 shadow-lg active:scale-[0.98] transition-transform">
+            <button 
+              onClick={handleListOnNetwork}
+              className="w-full bg-primary text-surface-container-lowest py-4 rounded-lg font-bold mt-4 shadow-lg active:scale-[0.98] transition-transform"
+            >
               List on Network
             </button>
           </div>

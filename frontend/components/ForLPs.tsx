@@ -1,4 +1,19 @@
+"use client";
+
+import { useToast } from "../context/ToastContext";
+
 export default function ForLPs() {
+  const { addToast, updateToast } = useToast();
+
+  const handleFund = async () => {
+    const toastId = addToast({ type: "pending", title: "Funding Invoice..." });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      updateToast(toastId, { type: "success", title: "Funded Successfully", txHash: "8b4a2c1de...e31" });
+    } catch (error) {
+      updateToast(toastId, { type: "error", title: "Funding Failed", message: "Transaction reverted." });
+    }
+  };
   const marketplaceData = [
     { amount: "$12,400", discount: "2.8%", yield: "14.2% APR" },
     { amount: "$4,500", discount: "4.0%", yield: "11.8% APR" },
@@ -28,7 +43,7 @@ export default function ForLPs() {
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-20 items-center">
         <div className="order-2 md:order-1">
           {/* Dashboard Mockup */}
-          <div className="bg-surface rounded-xl shadow-xl overflow-hidden border border-outline-variant/10">
+          <div className="bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden border border-outline-variant/10">
             <div className="p-6 border-b border-surface-dim flex justify-between items-center">
               <h3 className="font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">
@@ -67,7 +82,10 @@ export default function ForLPs() {
                         {item.yield}
                       </td>
                       <td className="px-6 py-4">
-                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold">
+                        <button 
+                          onClick={handleFund}
+                          className="bg-primary text-surface-container-lowest text-xs px-3 py-1.5 rounded font-bold"
+                        >
                           Fund
                         </button>
                       </td>
