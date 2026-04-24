@@ -3,12 +3,15 @@
 mod errors;
 mod invoice;
 
-use soroban_sdk::{contract, contractimpl, symbol_short, token::Client as TokenClient, Address, Env, Vec};
+use soroban_sdk::{
+    contract, contractimpl, symbol_short, token::Client as TokenClient, Address, Env, Vec,
+};
 
 use errors::ContractError;
 use invoice::{
     get_invoice_funders, get_payer_score, invoice_exists, load_invoice, next_invoice_id,
-    save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceParams, InvoiceStatus, StorageKey,
+    save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceParams, InvoiceStatus,
+    StorageKey,
 };
 
 // ----------------------------------------------------------------
@@ -35,13 +38,15 @@ impl InvoiceLiquidityContract {
 
         env.storage().instance().set(&StorageKey::Admin, &admin);
         env.storage().instance().set(&StorageKey::FeeRate, &0_u32);
-        env.storage().instance().set(&StorageKey::MaxDiscountRate, &5000_u32);
+        env.storage()
+            .instance()
+            .set(&StorageKey::MaxDiscountRate, &5000_u32);
 
         // approve first token (USDC or default)
         env.storage()
             .persistent()
             .set(&StorageKey::ApprovedToken(token.clone()), &true);
-            
+
         // approve native XLM SAC
         env.storage()
             .persistent()
@@ -74,25 +79,37 @@ impl InvoiceLiquidityContract {
     pub fn update_max_discount(env: Env, rate: u32) {
         let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
         admin.require_auth();
-        env.storage().instance().set(&StorageKey::MaxDiscountRate, &rate);
+        env.storage()
+            .instance()
+            .set(&StorageKey::MaxDiscountRate, &rate);
     }
 
     pub fn add_token(env: Env, token: Address) {
         let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
         admin.require_auth();
-        env.storage().persistent().set(&StorageKey::ApprovedToken(token.clone()), &true);
+        env.storage()
+            .persistent()
+            .set(&StorageKey::ApprovedToken(token.clone()), &true);
 
-        let mut list: Vec<Address> = env.storage().persistent().get(&StorageKey::TokenList).unwrap_or(Vec::new(&env));
+        let mut list: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&StorageKey::TokenList)
+            .unwrap_or(Vec::new(&env));
         if !list.contains(&token) {
             list.push_back(token);
-            env.storage().persistent().set(&StorageKey::TokenList, &list);
+            env.storage()
+                .persistent()
+                .set(&StorageKey::TokenList, &list);
         }
     }
 
     pub fn remove_token(env: Env, token: Address) {
         let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
         admin.require_auth();
-        env.storage().persistent().set(&StorageKey::ApprovedToken(token.clone()), &false);
+        env.storage()
+            .persistent()
+            .set(&StorageKey::ApprovedToken(token.clone()), &false);
     }
 
     // ------------------------------------------------------------
@@ -113,7 +130,11 @@ impl InvoiceLiquidityContract {
             return Err(ContractError::InvalidAmount);
         }
 
-        let max_rate: u32 = env.storage().instance().get(&StorageKey::MaxDiscountRate).unwrap_or(5000);
+        let max_rate: u32 = env
+            .storage()
+            .instance()
+            .get(&StorageKey::MaxDiscountRate)
+            .unwrap_or(5000);
         if discount_rate == 0 || discount_rate > max_rate {
             return Err(ContractError::InvalidDiscountRate);
         }
@@ -134,6 +155,7 @@ impl InvoiceLiquidityContract {
             id,
             freelancer,
             payer,
+            token,
             amount,
             due_date,
             discount_rate,
@@ -146,8 +168,7 @@ impl InvoiceLiquidityContract {
         save_invoice(&env, &invoice);
 
         #[allow(deprecated)]
-        env.events()
-            .publish((symbol_short!("submitted"),), id);
+        env.events().publish((symbol_short!("submitted"),), id);
 
         Ok(id)
     }
@@ -175,7 +196,11 @@ impl InvoiceLiquidityContract {
                 return Err(ContractError::InvalidAmount);
             }
 
-            let max_rate: u32 = env.storage().instance().get(&StorageKey::MaxDiscountRate).unwrap_or(5000);
+            let max_rate: u32 = env
+                .storage()
+                .instance()
+                .get(&StorageKey::MaxDiscountRate)
+                .unwrap_or(5000);
             if params.discount_rate == 0 || params.discount_rate > max_rate {
                 return Err(ContractError::InvalidDiscountRate);
             }
@@ -195,6 +220,7 @@ impl InvoiceLiquidityContract {
                 id,
                 freelancer: params.freelancer,
                 payer: params.payer,
+                token: params.token,
                 amount: params.amount,
                 due_date: params.due_date,
                 discount_rate: params.discount_rate,
@@ -207,12 +233,11 @@ impl InvoiceLiquidityContract {
             save_invoice(&env, &invoice);
 
             #[allow(deprecated)]
-            env.events()
-                .publish((symbol_short!("submitted"),), id);
+            env.events().publish((symbol_short!("submitted"),), id);
 
             ids.push_back(id);
         }
-        
+
         Ok(ids)
     }
 
@@ -245,7 +270,7 @@ impl InvoiceLiquidityContract {
         }
 
         // --- Execute transfer ---
-        let token = usdc_client(&env);
+        let token = token_client(&env, &invoice.token);
         let contract_address = env.current_contract_address();
         token.transfer(&funder, &contract_address, &fund_amount);
 
@@ -289,10 +314,8 @@ impl InvoiceLiquidityContract {
         save_invoice(&env, &invoice);
 
         #[allow(deprecated)]
-        env.events().publish(
-            (symbol_short!("funded"),),
-            (invoice_id, funder),
-        );
+        env.events()
+            .publish((symbol_short!("funded"),), (invoice_id, funder));
 
         Ok(())
     }
@@ -364,7 +387,7 @@ impl InvoiceLiquidityContract {
             / 10_000;
         let total_to_distribute = invoice.amount + discount_amount;
 
-        let token = usdc_client(&env);
+        let token = token_client(&env, &invoice.token);
         let contract_address = env.current_contract_address();
 
         // Payer sends full invoice amount to the contract
@@ -388,8 +411,7 @@ impl InvoiceLiquidityContract {
 
         // Emit event
         #[allow(deprecated)]
-        env.events()
-            .publish((symbol_short!("paid"),), invoice_id);
+        env.events().publish((symbol_short!("paid"),), invoice_id);
 
         Ok(())
     }
@@ -481,7 +503,7 @@ impl InvoiceLiquidityContract {
 
         // --- Execution ---
 
-        let token = usdc_client(&env);
+        let token = token_client(&env, &invoice.token);
         let contract_address = env.current_contract_address();
 
         // Calculate the discount amount that was kept in escrow
@@ -560,14 +582,8 @@ impl InvoiceLiquidityContract {
 // TOKEN HELPERS
 // ----------------------------------------------------------------
 
-fn usdc_client<'a>(env: &'a Env) -> TokenClient<'a> {
-    let list: Vec<Address> = env
-        .storage()
-        .persistent()
-        .get(&StorageKey::TokenList)
-        .unwrap_or(Vec::new(env));
-    let token = list.get(0).expect("contract not initialized");
-    TokenClient::new(env, &token)
+fn token_client<'a>(env: &'a Env, token: &Address) -> TokenClient<'a> {
+    TokenClient::new(env, token)
 }
 
 fn discount_rate_as_i128(rate: u32) -> i128 {
@@ -586,4 +602,5 @@ fn is_approved_token(env: &Env, token: &Address) -> bool {
 // ----------------------------------------------------------------
 
 mod test;
+mod tests_multi_token;
 mod tests_security;

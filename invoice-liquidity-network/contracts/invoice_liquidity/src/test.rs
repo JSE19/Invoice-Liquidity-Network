@@ -19,7 +19,6 @@ struct TestEnv {
     freelancer: Address,
     payer: Address,
     funder: Address,
-    usdc_admin: Address,
 }
 
 /// Standard invoice values reused across tests
@@ -56,9 +55,11 @@ fn setup() -> TestEnv {
     let contract_id = env.register(InvoiceLiquidityContract, ());
     let contract = InvoiceLiquidityContractClient::new(&env, &contract_id);
 
-    let xlm_address = Address::generate(&env);
-    
-    // Initialize with mock token address
+    let xlm_admin = Address::generate(&env);
+    let xlm_contract_id = env.register_stellar_asset_contract_v2(xlm_admin);
+    let xlm_address = xlm_contract_id.address();
+
+    // Initialize with mock USDC and mock XLM SAC addresses
     contract.initialize(&usdc_admin, &usdc_address, &xlm_address);
 
     // ---- Set ledger timestamp to a known baseline ----
@@ -73,7 +74,6 @@ fn setup() -> TestEnv {
         freelancer,
         payer,
         funder,
-        usdc_admin,
     }
 }
 
@@ -122,6 +122,7 @@ fn test_submit_invoice_stores_correct_fields() {
     assert_eq!(invoice.id, id);
     assert_eq!(invoice.freelancer, t.freelancer);
     assert_eq!(invoice.payer, t.payer);
+    assert_eq!(invoice.token, t.token.address);
     assert_eq!(invoice.amount, INVOICE_AMOUNT);
     assert_eq!(invoice.due_date, due_date);
     assert_eq!(invoice.discount_rate, DISCOUNT_RATE);
@@ -204,7 +205,7 @@ fn test_submit_invoices_batch_atomicity_fail() {
     let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
 
     let mut batch = Vec::new(&t.env);
-    
+
     // Valid invoice
     batch.push_back(InvoiceParams {
         freelancer: t.freelancer.clone(),
@@ -228,11 +229,10 @@ fn test_submit_invoices_batch_atomicity_fail() {
     let result = t.contract.try_submit_invoices_batch(&batch);
 
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
-    
+
     // Verify no invoice was saved
     assert_eq!(t.contract.get_invoice_count(), 0);
 }
-
 
 // ----------------------------------------------------------------
 // submit_invoice — validation errors
@@ -243,9 +243,14 @@ fn test_submit_rejects_zero_amount() {
     let t = setup();
     let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
 
-    let result =
-        t.contract
-            .try_submit_invoice(&t.freelancer, &t.payer, &0, &due_date, &DISCOUNT_RATE, &t.token.address);
+    let result = t.contract.try_submit_invoice(
+        &t.freelancer,
+        &t.payer,
+        &0,
+        &due_date,
+        &DISCOUNT_RATE,
+        &t.token.address,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
 }
@@ -255,9 +260,14 @@ fn test_submit_rejects_negative_amount() {
     let t = setup();
     let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
 
-    let result =
-        t.contract
-            .try_submit_invoice(&t.freelancer, &t.payer, &-1, &due_date, &DISCOUNT_RATE, &t.token.address);
+    let result = t.contract.try_submit_invoice(
+        &t.freelancer,
+        &t.payer,
+        &-1,
+        &due_date,
+        &DISCOUNT_RATE,
+        &t.token.address,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
 }
@@ -284,9 +294,14 @@ fn test_submit_rejects_zero_discount_rate() {
     let t = setup();
     let due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET;
 
-    let result =
-        t.contract
-            .try_submit_invoice(&t.freelancer, &t.payer, &INVOICE_AMOUNT, &due_date, &0, &t.token.address);
+    let result = t.contract.try_submit_invoice(
+        &t.freelancer,
+        &t.payer,
+        &INVOICE_AMOUNT,
+        &due_date,
+        &0,
+        &t.token.address,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::InvalidDiscountRate)));
 }
@@ -416,7 +431,9 @@ fn test_fund_invoice_sets_funded_at_timestamp() {
 fn test_fund_nonexistent_invoice_fails() {
     let t = setup();
 
-    let result = t.contract.try_fund_invoice(&t.funder, &999, &INVOICE_AMOUNT);
+    let result = t
+        .contract
+        .try_fund_invoice(&t.funder, &999, &INVOICE_AMOUNT);
     assert_eq!(result, Err(Ok(ContractError::InvoiceNotFound)));
 }
 
