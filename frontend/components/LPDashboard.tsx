@@ -6,7 +6,12 @@ import { useToast } from "../context/ToastContext";
 import TokenSelector, { TokenAmount } from "./TokenSelector";
 import { useApprovedTokens } from "../hooks/useApprovedTokens";
 import {
+<<<<<<< HEAD
   buildApproveTokenTransaction,
+=======
+  buildApproveUsdcTransaction,
+  claimDefault,
+>>>>>>> 965240e (Frontend: Build the LP portfolio view, funded and settled invoices)
   getAllInvoices,
   getTokenAllowance,
   fundInvoice,
@@ -18,6 +23,7 @@ import { formatUSDC, formatAddress, formatDate, calculateYield } from "../utils/
 import { useWatchlist } from "../hooks/useWatchlist";
 import { usePayerScores } from "../hooks/usePayerScores";
 import RiskBadge from "./RiskBadge";
+import LPPortfolio from "./LPPortfolio";
 import { RISK_SORT_ORDER } from "../utils/risk";
 
 type Tab = "discovery" | "my-funded" | "watchlist";
@@ -38,6 +44,7 @@ export default function LPDashboard() {
   const [fundingError, setFundingError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<keyof Invoice | "risk">("amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [claimingInvoiceId, setClaimingInvoiceId] = useState<string | null>(null);
 
   const { watchlist, toggleWatchlist, isInWatchlist } = useWatchlist(address || null);
 
@@ -187,9 +194,41 @@ export default function LPDashboard() {
     }
   };
 
+<<<<<<< HEAD
   const sortedInvoices = [...invoices].sort((a, b) => {
     const aVal = a[sortKey] as string | number | bigint | undefined;
     const bVal = b[sortKey] as string | number | bigint | undefined;
+=======
+  const handleClaimDefault = async (invoice: Invoice) => {
+    if (!address) {
+      await connect();
+      return;
+    }
+
+    setClaimingInvoiceId(invoice.id.toString());
+    const toastId = addToast({ type: "pending", title: `Claiming default for #${invoice.id.toString()}...` });
+    try {
+      const tx = await claimDefault(address, invoice.id);
+      const result = await submitSignedTransaction({ tx, signTx });
+      updateToast(toastId, {
+        type: "success",
+        title: "Default claimed",
+        txHash: result.txHash,
+      });
+      await fetchData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to claim default.";
+      updateToast(toastId, {
+        type: "error",
+        title: "Claim failed",
+        message,
+      });
+    } finally {
+      setClaimingInvoiceId(null);
+    }
+  };
+
+>>>>>>> 965240e (Frontend: Build the LP portfolio view, funded and settled invoices)
   const sortedInvoices = [...invoices].sort((a: any, b: any) => {
     if (sortKey === "risk") {
       const ra = RISK_SORT_ORDER[payerRisks.get(a.payer) ?? "Unknown"];
@@ -276,7 +315,19 @@ export default function LPDashboard() {
         </div>
       </div>
 
+<<<<<<< HEAD
       <div id="discovery-table" className="overflow-x-auto">
+=======
+      {activeTab === "my-funded" ? (
+        <LPPortfolio
+          invoices={myFundedInvoices}
+          isLoading={loading}
+          onClaimDefault={handleClaimDefault}
+          claimingInvoiceId={claimingInvoiceId}
+        />
+      ) : (
+      <div className="overflow-x-auto">
+>>>>>>> 965240e (Frontend: Build the LP portfolio view, funded and settled invoices)
         <table className="w-full text-left">
           <thead className="bg-surface-container-low">
             <tr>
@@ -316,6 +367,7 @@ export default function LPDashboard() {
                   Loading invoices from Stellar...
                 </td>
               </tr>
+<<<<<<< HEAD
             ) : (activeTab === "discovery" ? discoveryInvoices : activeTab === "watchlist" ? watchlistInvoices : myFundedInvoices).length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
@@ -324,6 +376,16 @@ export default function LPDashboard() {
               </tr>
             ) : (
               (activeTab === "discovery" ? discoveryInvoices : activeTab === "watchlist" ? watchlistInvoices : myFundedInvoices).map((invoice: any, index: number) => (
+=======
+            ) : discoveryInvoices.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant italic">
+                  No pending invoices found.
+                </td>
+              </tr>
+            ) : (
+              discoveryInvoices.map((invoice) => (
+>>>>>>> 965240e (Frontend: Build the LP portfolio view, funded and settled invoices)
                 <tr key={invoice.id.toString()} className="hover:bg-surface-variant/10 transition-colors">
                   <td className="px-6 py-5 font-bold text-primary">#{invoice.id.toString()}</td>
                   <td className="px-6 py-5">
@@ -375,6 +437,7 @@ export default function LPDashboard() {
                     </td>
                   )}
                   <td className="px-6 py-5 text-right">
+<<<<<<< HEAD
                     {activeTab === "discovery" ? (
                       <button
                         id={index === 0 ? "fund-button" : undefined}
@@ -399,6 +462,14 @@ export default function LPDashboard() {
                         )}
                       </div>
                     )}
+=======
+                    <button
+                      onClick={() => handleFund(invoice)}
+                      className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+                    >
+                      Fund
+                    </button>
+>>>>>>> 965240e (Frontend: Build the LP portfolio view, funded and settled invoices)
                   </td>
                 </tr>
               ))
@@ -406,6 +477,7 @@ export default function LPDashboard() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Confirmation Modal */}
       {selectedInvoice && (

@@ -227,6 +227,44 @@ export async function markPaid(payer: string, invoice_id: bigint) {
   return finalTx;
 }
 
+export async function claimDefault(funder: string, invoice_id: bigint) {
+  const contractAddress = CONTRACT_ID;
+  const method = "claim_default";
+  const params: xdr.ScVal[] = [
+    Address.fromString(funder).toScVal(),
+    nativeToScVal(invoice_id, { type: "u64" }),
+  ];
+
+  const account = await server.getAccount(funder);
+
+  const tx = new TransactionBuilder(account, {
+    fee: "10000",
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeInvokeContract(
+          new xdr.InvokeContractArgs({
+            contractAddress: Address.fromString(contractAddress).toScAddress(),
+            functionName: method,
+            args: params,
+          })
+        ),
+        auth: [],
+      })
+    )
+    .setTimeout(60 * 5)
+    .build();
+
+  const sim = await server.simulateTransaction(tx);
+  if (!rpc.Api.isSimulationSuccess(sim)) {
+    throw new Error(`Simulation failed: ${sim.error}`);
+  }
+
+  const finalTx = rpc.assembleTransaction(tx, sim).build();
+  return finalTx;
+}
+
 export async function submitInvoiceTransaction({
   freelancer,
   payer,
