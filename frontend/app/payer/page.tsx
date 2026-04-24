@@ -11,6 +11,7 @@ import { useWallet } from "../../context/WalletContext";
 import { useApprovedTokens } from "../../hooks/useApprovedTokens";
 import { formatAddress, formatDate, formatTokenAmount } from "../../utils/format";
 import { getAllInvoices, Invoice, markPaid } from "../../utils/soroban";
+import InvoiceTable, { ColumnDefinition } from "../../components/InvoiceTable";
 
 const server = new rpc.Server(RPC_URL);
 
@@ -392,7 +393,118 @@ export default function PayerDashboard() {
     } finally {
       setIsSettling(false);
     }
-  };
+  const columns: ColumnDefinition<Invoice>[] = [
+    {
+      id: "id",
+      label: "ID",
+      isMandatory: true,
+      sortable: true,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-primary"}`}>
+            #{inv.id.toString()}
+          </span>
+        );
+      },
+    },
+    {
+      id: "freelancer",
+      label: "Freelancer",
+      sortable: false,
+      renderCell: (inv) => (
+        <span className="text-sm font-mono text-on-surface-variant">
+          {formatAddress(inv.freelancer)}
+        </span>
+      ),
+    },
+    {
+      id: "amount",
+      label: "Amount Owed",
+      sortable: true,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-on-surface"}`}>
+            <InvoiceAmount invoice={inv} amount={inv.amount} tokenMap={tokenMap} defaultToken={defaultToken} />
+          </span>
+        );
+      },
+    },
+    {
+      id: "due_date",
+      label: "Due Date",
+      sortable: true,
+      renderCell: (inv) => {
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm text-on-surface">{formatDate(inv.due_date)}</span>
+            {!paid && <DaysChip due_date={inv.due_date} />}
+          </div>
+        );
+      },
+    },
+    {
+      id: "status",
+      label: "Status",
+      isMandatory: true,
+      sortable: false,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        if (paid) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs font-semibold">
+              <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                check_circle
+              </span>
+              Paid
+            </span>
+          );
+        }
+        if (overdue) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 text-xs font-semibold">
+              <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                error
+              </span>
+              Overdue
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30 text-xs font-semibold">
+            <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              pending
+            </span>
+            Funded
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      label: "Action",
+      sortable: false,
+      renderCell: (inv) => {
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        if (paid) return null;
+        return (
+          <div className="text-right">
+            <button
+              onClick={() => setSelectedInvoice(inv)}
+              className="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:bg-primary hover:text-white transition-all shadow-sm active:scale-95"
+            >
+              Settle
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <main id="payer-settlement-page" className="min-h-screen">
@@ -500,173 +612,17 @@ export default function PayerDashboard() {
       {/* ── Main table ───────────────────────────────────────────────────── */}
       <section className="py-8 px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/10 overflow-hidden">
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-low">
-                  <tr>
-                    <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                      Freelancer
-                    </th>
-                    <SortTh
-                      label="Amount Owed"
-                      sortKey="amount"
-                      activeSortKey={sortKey}
-                      sortOrder={sortOrder}
-                      onSort={toggleSort}
-                    />
-                    <SortTh
-                      label="Due Date"
-                      sortKey="due_date"
-                      activeSortKey={sortKey}
-                      sortOrder={sortOrder}
-                      onSort={toggleSort}
-                    />
-                    <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/10">
-                  {!isConnected ? (
-                    <tr>
-                      <td colSpan={6}>
-                        <EmptyState connected={false} />
-                      </td>
-                    </tr>
-                  ) : loading ? (
-                    <>
-                      <SkeletonRow />
-                      <SkeletonRow />
-                      <SkeletonRow />
-                    </>
-                  ) : sortedInvoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={6}>
-                        <EmptyState connected={true} />
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedInvoices.map((invoice) => {
-                      const overdue = isOverdue(invoice.due_date);
-                      const paid =
-                        invoice.status === "Paid" ||
-                        justPaid.has(invoice.id.toString());
-
-                      return (
-                        <tr
-                          key={invoice.id.toString()}
-                          className={`transition-colors ${
-                            overdue && !paid
-                              ? "bg-red-500/[0.03] hover:bg-red-500/[0.06]"
-                              : "hover:bg-surface-container/50"
-                          }`}
-                        >
-                          {/* ID */}
-                          <td className="px-6 py-5">
-                            <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-primary"}`}>
-                              #{invoice.id.toString()}
-                            </span>
-                          </td>
-
-                          {/* Freelancer */}
-                          <td className="px-6 py-5">
-                            <span className="text-sm font-mono text-on-surface-variant">
-                              {formatAddress(invoice.freelancer)}
-                            </span>
-                          </td>
-
-                          {/* Amount */}
-                          <td className="px-6 py-5">
-                            <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-on-surface"}`}>
-                              <InvoiceAmount invoice={invoice} amount={invoice.amount} tokenMap={tokenMap} defaultToken={defaultToken} />
-                            </span>
-                          </td>
-
-                          {/* Due date + days remaining */}
-                          <td className="px-6 py-5">
-                            <div className="flex flex-col gap-1.5">
-                              <span className="text-sm text-on-surface">
-                                {formatDate(invoice.due_date)}
-                              </span>
-                              {!paid && <DaysChip due_date={invoice.due_date} />}
-                            </div>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-6 py-5">
-                            {paid ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs font-semibold">
-                                <span
-                                  className="material-symbols-outlined text-[12px]"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  check_circle
-                                </span>
-                                Paid
-                              </span>
-                            ) : overdue ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 text-xs font-semibold">
-                                <span
-                                  className="material-symbols-outlined text-[12px]"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  error
-                                </span>
-                                Overdue
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30 text-xs font-semibold">
-                                <span
-                                  className="material-symbols-outlined text-[12px]"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  pending
-                                </span>
-                                Funded
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Action */}
-                          <td className="px-6 py-5 text-right">
-                            {paid ? (
-                              <span className="text-xs text-on-surface-variant flex items-center justify-end gap-1">
-                                <span className="material-symbols-outlined text-[14px] text-emerald-500">
-                                  task_alt
-                                </span>
-                                Settled
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => setSelectedInvoice(invoice)}
-                                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm ${
-                                  overdue
-                                    ? "bg-red-500 text-white hover:bg-red-600"
-                                    : "bg-primary text-white hover:bg-primary/90"
-                                }`}
-                              >
-                                <span className="material-symbols-outlined text-[14px]">payments</span>
-                                Settle
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <InvoiceTable
+            tableId="payer_dashboard_table"
+            data={sortedInvoices}
+            columns={columns}
+            isLoading={loading}
+            emptyMessage={isConnected ? "No invoices to settle." : "Connect your wallet to see your invoices."}
+            onSort={(key) => toggleSort(key as keyof Invoice)}
+            sortKey={sortKey}
+            sortOrder={sortOrder}
+            keyExtractor={(inv) => inv.id.toString()}
+          />
         </div>
       </section>
 
