@@ -120,4 +120,17 @@ h1, h2, h3, .serif {
   );
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
+
+/* Pulse animation for urgent countdown timers */
+@keyframes pulse-fast {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 1.5s ease-in-out infinite;
 }
