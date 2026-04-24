@@ -7,7 +7,6 @@ import TokenSelector, { TokenAmount } from "./TokenSelector";
 import { useApprovedTokens } from "../hooks/useApprovedTokens";
 import {
   buildApproveTokenTransaction,
-  buildApproveUsdcTransaction,
   claimDefault,
   getAllInvoices,
   getTokenAllowance,
@@ -39,7 +38,7 @@ export default function LPDashboard() {
   const [isCheckingAllowance, setIsCheckingAllowance] = useState(false);
   const [allowance, setAllowance] = useState<bigint | null>(null);
   const [fundingError, setFundingError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<keyof Invoice | "risk">("amount");
+  const [sortKey, setSortKey] = useState<keyof Invoice | "risk" | "yield">("amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [claimingInvoiceId, setClaimingInvoiceId] = useState<string | null>(null);
 
@@ -218,12 +217,18 @@ export default function LPDashboard() {
       setClaimingInvoiceId(null);
     }
   };
-
   const sortedInvoices = [...invoices].sort((a: any, b: any) => {
     if (sortKey === "risk") {
       const ra = RISK_SORT_ORDER[payerRisks.get(a.payer) ?? "Unknown"];
       const rb = RISK_SORT_ORDER[payerRisks.get(b.payer) ?? "Unknown"];
       return sortOrder === "asc" ? ra - rb : rb - ra;
+    }
+    if (sortKey === "yield") {
+      const ay = calculateYield(a.amount, a.discount_rate);
+      const by = calculateYield(b.amount, b.discount_rate);
+      if (ay < by) return sortOrder === "asc" ? -1 : 1;
+      if (ay > by) return sortOrder === "asc" ? 1 : -1;
+      return 0;
     }
     const aVal = a[sortKey];
     const bVal = b[sortKey];
@@ -242,7 +247,7 @@ export default function LPDashboard() {
       return { ...i, watchAddedAt: watchItem?.addedAt || 0 };
     });
 
-  const toggleSort = (key: keyof Invoice | "risk") => {
+  const toggleSort = (key: keyof Invoice | "risk" | "yield") => {
     if (sortKey === key) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -253,7 +258,7 @@ export default function LPDashboard() {
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl shadow-xl overflow-hidden border border-outline-variant/10 min-h-[500px]">
-      <div className="p-6 border-b border-surface-dim flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div data-testid="lp-dashboard-header" className="p-6 border-b border-surface-dim flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">monitoring</span>
