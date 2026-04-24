@@ -379,7 +379,7 @@ export default function PayerDashboard() {
   };
 
   return (
-    <main className="min-h-screen">
+    <main id="payer-settlement-page" className="min-h-screen">
       <Navbar />
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
