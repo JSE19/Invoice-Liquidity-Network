@@ -12,6 +12,7 @@ import { useApprovedTokens } from "../../hooks/useApprovedTokens";
 import { formatAddress, formatDate, formatTokenAmount } from "../../utils/format";
 import { getAllInvoices, Invoice, markPaid } from "../../utils/soroban";
 import TokenSelector, { TokenAmount } from "../../components/TokenSelector";
+import InvoiceTable, { ColumnDefinition } from "../../components/InvoiceTable";
 
 const server = new rpc.Server(RPC_URL);
 
@@ -360,7 +361,118 @@ export default function PayerDashboard() {
     } finally {
       setIsSettling(false);
     }
-  };
+  const columns: ColumnDefinition<Invoice>[] = [
+    {
+      id: "id",
+      label: "ID",
+      isMandatory: true,
+      sortable: true,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-primary"}`}>
+            #{inv.id.toString()}
+          </span>
+        );
+      },
+    },
+    {
+      id: "freelancer",
+      label: "Freelancer",
+      sortable: false,
+      renderCell: (inv) => (
+        <span className="text-sm font-mono text-on-surface-variant">
+          {formatAddress(inv.freelancer)}
+        </span>
+      ),
+    },
+    {
+      id: "amount",
+      label: "Amount Owed",
+      sortable: true,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <span className={`font-bold text-sm ${overdue && !paid ? "text-red-500" : "text-on-surface"}`}>
+            <InvoiceAmount invoice={inv} amount={inv.amount} tokenMap={tokenMap} defaultToken={defaultToken} />
+          </span>
+        );
+      },
+    },
+    {
+      id: "due_date",
+      label: "Due Date",
+      sortable: true,
+      renderCell: (inv) => {
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        return (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm text-on-surface">{formatDate(inv.due_date)}</span>
+            {!paid && <DaysChip due_date={inv.due_date} />}
+          </div>
+        );
+      },
+    },
+    {
+      id: "status",
+      label: "Status",
+      isMandatory: true,
+      sortable: false,
+      renderCell: (inv) => {
+        const overdue = isOverdue(inv.due_date);
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        if (paid) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs font-semibold">
+              <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                check_circle
+              </span>
+              Paid
+            </span>
+          );
+        }
+        if (overdue) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 text-xs font-semibold">
+              <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                error
+              </span>
+              Overdue
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30 text-xs font-semibold">
+            <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              pending
+            </span>
+            Funded
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      label: "Action",
+      sortable: false,
+      renderCell: (inv) => {
+        const paid = inv.status === "Paid" || justPaid.has(inv.id.toString());
+        if (paid) return null;
+        return (
+          <div className="text-right">
+            <button
+              onClick={() => setSelectedInvoice(inv)}
+              className="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:bg-primary hover:text-white transition-all shadow-sm active:scale-95"
+            >
+              Settle
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <main id="payer-settlement-page" className="min-h-screen">

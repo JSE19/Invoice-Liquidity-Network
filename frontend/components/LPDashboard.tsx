@@ -15,8 +15,8 @@ import {
   Invoice,
   submitSignedTransaction,
 } from "../utils/soroban";
+import { formatUSDC, formatAddress, formatDate, calculateYield } from "../utils/format";
 import { formatAddress, formatDate, formatTokenAmount, calculateYield } from "../utils/format";
-import { formatUSDC } from "../utils/format";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { usePayerScores } from "../hooks/usePayerScores";
 import RiskBadge from "./RiskBadge";
@@ -273,6 +273,163 @@ export default function LPDashboard() {
   if (activeTab === "discovery") {
     tableHeaders.push(t("lpDashboard.tableHeaders.risk"));
   }
+  const commonColumns: ColumnDefinition<any>[] = [
+    {
+      id: "id",
+      label: "ID",
+      isMandatory: true,
+      sortable: true,
+      renderCell: (inv) => <span className="font-bold text-primary">#{inv.id.toString()}</span>,
+    },
+    {
+      id: "freelancer",
+      label: "Freelancer",
+      sortable: false,
+      renderCell: (inv) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{formatAddress(inv.freelancer)}</span>
+          <span className="text-[10px] text-on-surface-variant">Payer: {formatAddress(inv.payer)}</span>
+        </div>
+      ),
+    },
+    {
+      id: "amount",
+      label: "Amount",
+      sortable: true,
+      renderCell: (inv) => (
+        <TokenAwareAmount amount={inv.amount} invoice={inv} tokenMap={tokenMap} defaultToken={defaultToken} />
+      ),
+    },
+    {
+      id: "discount_rate",
+      label: "Discount",
+      sortable: true,
+      renderCell: (inv) => (
+        <span className="bg-primary-container text-on-primary-container px-2 py-0.5 rounded text-xs font-bold">
+          {(inv.discount_rate / 100).toFixed(2)}%
+        </span>
+      ),
+    },
+    {
+      id: "due_date",
+      label: "Due Date",
+      sortable: true,
+      renderCell: (inv) => <span className="text-sm">{formatDate(inv.due_date)}</span>,
+    },
+    {
+      id: "yield",
+      label: "Est. Yield",
+      sortable: false,
+      renderCell: (inv) => (
+        <span className="font-bold text-green-600">
+          <TokenAwareAmount
+            amount={calculateYield(inv.amount, inv.discount_rate)}
+            invoice={inv}
+            tokenMap={tokenMap}
+            defaultToken={defaultToken}
+          />
+        </span>
+      ),
+    },
+  ];
+
+  const discoveryColumns: ColumnDefinition<any>[] = [
+    ...commonColumns,
+    {
+      id: "risk",
+      label: "Risk",
+      sortable: true,
+      renderCell: (inv) => (
+        <RiskBadge
+          risk={payerRisks.get(inv.payer) ?? "Unknown"}
+          score={payerScores.get(inv.payer) ?? null}
+        />
+      ),
+    },
+    {
+      id: "actions",
+      label: "",
+      sortable: false,
+      renderCell: (inv) => (
+        <div className="flex items-center justify-end gap-2 text-right">
+          <button
+            onClick={(e) => handleWatchlistToggle(inv.id, e)}
+            className={`p-2 rounded-full transition-colors ${
+              isInWatchlist(inv.id) ? "text-red-500 hover:bg-red-50" : "text-on-surface-variant hover:bg-surface-variant/50"
+            }`}
+            title={isInWatchlist(inv.id) ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            <span
+              className="material-symbols-outlined text-[20px]"
+              style={{ fontVariationSettings: isInWatchlist(inv.id) ? "'FILL' 1" : "'FILL' 0" }}
+            >
+              bookmark
+            </span>
+          </button>
+          <button
+            onClick={() => handleFund(inv)}
+            className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+          >
+            Fund
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const watchlistColumns: ColumnDefinition<any>[] = [
+    ...commonColumns,
+    {
+      id: "watchAddedAt",
+      label: "Added",
+      sortable: true,
+      renderCell: (inv) => (
+        <span className="text-xs text-on-surface-variant">
+          {new Date(inv.watchAddedAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      label: "",
+      sortable: false,
+      renderCell: (inv) => (
+        <div className="flex items-center justify-end gap-2 text-right">
+          <button
+            onClick={(e) => handleWatchlistToggle(inv.id, e)}
+            className="p-2 rounded-full transition-colors text-red-500 hover:bg-red-50"
+            title="Remove from watchlist"
+          >
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              bookmark
+            </span>
+          </button>
+          {inv.status === "Pending" ? (
+            <button
+              onClick={() => handleFund(inv)}
+              className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+            >
+              Fund
+            </button>
+          ) : (
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
+                  inv.status === "Funded" ? "bg-blue-100 text-blue-700" : inv.status === "Paid" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                }`}
+              >
+                {inv.status}
+              </span>
+              <span className="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 rounded flex items-center gap-1">
+                <span className="material-symbols-outlined text-[10px]">warning</span>
+                Already funded
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl shadow-xl overflow-hidden border border-outline-variant/10 min-h-[500px]">
@@ -285,8 +442,9 @@ export default function LPDashboard() {
           <p className="text-sm text-on-surface-variant mt-1">
             {t("lpDashboard.subtitle")}
           </p>
+          <p className="text-sm text-on-surface-variant mt-1">Browse and fund invoices to earn yield.</p>
         </div>
-        
+
         <div className="flex bg-surface-container-low p-1 rounded-xl">
           <button
             onClick={() => setActiveTab("discovery")}
