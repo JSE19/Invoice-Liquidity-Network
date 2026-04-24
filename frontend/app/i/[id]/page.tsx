@@ -21,6 +21,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { getInvoice, type Invoice } from "../../../utils/soroban";
 import { formatUsdcFromStroops } from "../../../utils/invoiceSubmission";
 import { TESTNET_USDC_TOKEN_ID, NETWORK_NAME } from "../../../constants";
+import ActivityFeed from "../../../components/ActivityFeed";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -523,6 +524,9 @@ export default function InvoiceStatusPage({
               </div>
             </div>
           </section>
+
+          {/* ── Activity Feed ────────────────────────────────────────────── */}
+          <ActivityFeed invoiceId={inv.id} />
 
           {/* ── Footer note ──────────────────────────────────────────────── */}
           <p className="mt-8 text-center text-xs text-on-surface-variant/50">
