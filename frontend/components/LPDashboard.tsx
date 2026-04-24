@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "../context/WalletContext";
 import { useToast } from "../context/ToastContext";
 import TokenSelector, { TokenAmount } from "./TokenSelector";
+import InvoiceFilterBar from "./InvoiceFilterBar";
 import { useApprovedTokens } from "../hooks/useApprovedTokens";
+import { applyInvoiceFilters, useInvoiceFilters } from "../hooks/useInvoiceFilters";
 import SkeletonRow, { LP_DISCOVERY_COLUMNS } from "./SkeletonRow";
 import {
   buildApproveTokenTransaction,
@@ -40,6 +42,12 @@ export default function LPDashboard() {
   const [sortKey, setSortKey] = useState<keyof Invoice | "risk" | "yield">("amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [claimingInvoiceId, setClaimingInvoiceId] = useState<string | null>(null);
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+  } = useInvoiceFilters({ namespace: "lpInvoices" });
 
   const { watchlist, toggleWatchlist, isInWatchlist } = useWatchlist(address || null);
 
@@ -216,7 +224,18 @@ export default function LPDashboard() {
       setClaimingInvoiceId(null);
     }
   };
-  const sortedInvoices = [...invoices].sort((a: any, b: any) => {
+  const filteredInvoices = useMemo(
+    () =>
+      applyInvoiceFilters(invoices, filters, {
+        resolveTokenSymbol: (invoice) => {
+          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
+          return token?.symbol ?? "USDC";
+        },
+      }),
+    [defaultToken?.contractId, filters, invoices, tokenMap],
+  );
+
+  const sortedInvoices = [...filteredInvoices].sort((a: any, b: any) => {
     if (sortKey === "risk") {
       const ra = RISK_SORT_ORDER[payerRisks.get(a.payer) ?? "Unknown"];
       const rb = RISK_SORT_ORDER[payerRisks.get(b.payer) ?? "Unknown"];
@@ -305,6 +324,14 @@ export default function LPDashboard() {
             My Funded
           </button>
         </div>
+      </div>
+      <div className="px-6 pt-4">
+        <InvoiceFilterBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={clearFilters}
+          activeFilterCount={activeFilterCount}
+        />
       </div>
 
       {activeTab === "my-funded" ? (

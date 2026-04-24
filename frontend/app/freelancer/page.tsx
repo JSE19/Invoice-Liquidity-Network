@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import InvoiceFilterBar from "../../components/InvoiceFilterBar";
 import { useWallet } from "../../context/WalletContext";
 import { useToast } from "../../context/ToastContext";
+import { useApprovedTokens } from "../../hooks/useApprovedTokens";
+import { applyInvoiceFilters, useInvoiceFilters } from "../../hooks/useInvoiceFilters";
 import {
   getAllInvoices,
   submitInvoice,
@@ -68,6 +71,7 @@ export default function FreelancerPage() {
   const { address, isConnected, connect } = useWallet();
   const { addToast, updateToast } = useToast();
   const { signTx } = useWallet();
+  const { tokenMap, defaultToken } = useApprovedTokens();
 
   const [screen, setScreen] = useState<Screen>("submit");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -78,6 +82,12 @@ export default function FreelancerPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+  } = useInvoiceFilters({ namespace: "freelancerInvoices" });
 
   // ── Fetch invoices for connected wallet ─────────────────────────────────────
   const fetchMyInvoices = useCallback(async () => {
@@ -104,6 +114,17 @@ export default function FreelancerPage() {
       }
     };
   }, [screen, fetchMyInvoices]);
+
+  const filteredInvoices = useMemo(
+    () =>
+      applyInvoiceFilters(invoices, filters, {
+        resolveTokenSymbol: (invoice) => {
+          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
+          return token?.symbol ?? "USDC";
+        },
+      }),
+    [defaultToken?.contractId, filters, invoices, tokenMap],
+  );
 
   // ── Form validation ──────────────────────────────────────────────────────────
   function validate(): boolean {
@@ -620,6 +641,14 @@ export default function FreelancerPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
+                  <div className="px-6 pt-4">
+                    <InvoiceFilterBar
+                      filters={filters}
+                      onFiltersChange={setFilters}
+                      onClearFilters={clearFilters}
+                      activeFilterCount={activeFilterCount}
+                    />
+                  </div>
                   <table className="w-full text-left" id="my-invoices-table">
                     <thead className="bg-surface-container-low">
                       <tr>
@@ -645,7 +674,7 @@ export default function FreelancerPage() {
                         Array.from({ length: 5 }).map((_, i) => (
                           <SkeletonRow key={i} columns={FREELANCER_COLUMNS} />
                         ))
-                      ) : invoices.length === 0 ? (
+                      ) : filteredInvoices.length === 0 ? (
                         <tr>
                           <td
                             colSpan={6}
@@ -668,7 +697,7 @@ export default function FreelancerPage() {
                           </td>
                         </tr>
                       ) : (
-                        invoices.map((inv) => (
+                        filteredInvoices.map((inv) => (
                           <tr
                             key={inv.id.toString()}
                             className="hover:bg-surface-variant/10 transition-colors"
