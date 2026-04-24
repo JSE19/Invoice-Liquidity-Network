@@ -22,6 +22,8 @@ import { getInvoice, type Invoice } from "../../../utils/soroban";
 import { formatUsdcFromStroops } from "../../../utils/invoiceSubmission";
 import { TESTNET_USDC_TOKEN_ID, NETWORK_NAME } from "../../../constants";
 import ActivityFeed from "../../../components/ActivityFeed";
+import { useWallet } from "../../../context/WalletContext";
+import { useToast } from "../../../context/ToastContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -211,6 +213,43 @@ function CopyLinkButton({ url }: { url: string }) {
   );
 }
 
+// ─── Copy payer invite link button ──────────────────────────────────────────
+
+function CopyPayerLinkButton({ invoiceId }: { invoiceId: string }) {
+  const [copied, setCopied] = useState(false);
+  const { addToast } = useToast();
+
+  const handleCopy = async () => {
+    const payUrl = `${window.location.origin}/pay/${invoiceId}`;
+    try {
+      await navigator.clipboard.writeText(payUrl);
+      setCopied(true);
+      addToast({ type: "success", title: "Link copied!", message: "Direct settlement link ready to share with the payer." });
+      setTimeout(() => setCopied(false), 2_500);
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <button
+      id="copy-payer-link"
+      type="button"
+      onClick={handleCopy}
+      className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+    >
+      <span
+        className="material-symbols-outlined text-base"
+        aria-hidden="true"
+        style={{ fontVariationSettings: copied ? "'FILL' 1" : "'FILL' 0" }}
+      >
+        {copied ? "check" : "forward_to_inbox"}
+      </span>
+      {copied ? "Copied!" : "Copy payer link"}
+    </button>
+  );
+}
+
 // ─── Share on X button ────────────────────────────────────────────────────────
 
 function ShareOnXButton({ invoiceId, url }: { invoiceId: bigint; url: string }) {
@@ -325,6 +364,7 @@ export default function InvoiceStatusPage({
 
   const { invoice, loadState, errorMessage, lastUpdated } = useInvoicePolling(invoiceId);
 
+  const { address } = useWallet();
   const [addressesRevealed, setAddressesRevealed] = useState(false);
 
   // Derive the canonical share URL from the browser (client-only)
@@ -515,6 +555,7 @@ export default function InvoiceStatusPage({
 
                 <div className="flex flex-wrap gap-2">
                   <CopyLinkButton url={shareUrl} />
+                  {address === inv.freelancer && <CopyPayerLinkButton invoiceId={inv.id.toString()} />}
                   <ShareOnXButton invoiceId={inv.id} url={shareUrl} />
                 </div>
 
