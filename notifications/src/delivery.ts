@@ -1,4 +1,4 @@
-import { Resend } from "@resend/resend";
+import { Resend } from "resend";
 import { CONFIG } from "./config";
 import type { NotificationPayload, Subscription } from "./types";
 
@@ -28,26 +28,32 @@ export async function sendWebhook(
   payload: NotificationPayload,
   attempt = 1
 ): Promise<void> {
-  const response = await fetch(subscription.destination, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      trigger: payload.trigger,
-      actor: payload.actor,
-      invoice: payload.invoice,
-      subject: payload.subject,
-      message: payload.message,
-    }),
-  });
+  let response;
+  try {
+    response = await fetch(subscription.destination, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        trigger: payload.trigger,
+        actor: payload.actor,
+        invoice: payload.invoice,
+        subject: payload.subject,
+        message: payload.message,
+      }),
+    });
 
-  if (response.ok) {
-    return;
+    if (response.ok) {
+      return;
+    }
+  } catch (error) {
+    // Network errors will be caught here and retried
+    console.error(`[delivery] Webhook fetch error on attempt ${attempt}:`, error);
   }
 
   if (attempt >= CONFIG.maxWebhookRetry) {
-    throw new Error(`Webhook failed after ${attempt} attempts: ${response.status}`);
+    throw new Error(`Webhook failed after ${attempt} attempts: ${response?.status || 'Network Error'}`);
   }
 
   const backoff = CONFIG.webhookBackoffBaseMs * 2 ** (attempt - 1);

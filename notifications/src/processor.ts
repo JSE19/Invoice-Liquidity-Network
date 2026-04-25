@@ -95,14 +95,15 @@ function getNotificationTargets(trigger: NotificationTrigger, invoice: Invoice):
         { recipient: invoice.freelancer, actor: "freelancer" },
         { recipient: invoice.payer, actor: "payer" },
       ];
-    case "invoice_paid":
-      if (!invoice.funder) {
-        return [];
-      }
-      return [
+    case "invoice_paid": {
+      const targets: Array<{ recipient: string; actor: "freelancer" | "lp" | "payer" }> = [
         { recipient: invoice.freelancer, actor: "freelancer" },
-        { recipient: invoice.funder, actor: "lp" },
       ];
+      if (invoice.funder) {
+        targets.push({ recipient: invoice.funder, actor: "lp" });
+      }
+      return targets;
+    }
     case "invoice_defaulted":
       if (!invoice.funder) {
         return [];
