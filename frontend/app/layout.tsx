@@ -4,6 +4,8 @@ import { ToastProvider } from "../context/ToastContext";
 import { WalletProvider } from "../context/WalletContext";
 import OnboardingFlow from "../components/onboarding/OnboardingFlow";
 import NetworkBanner from "../components/NetworkBanner";
+import CommandPalette from "../components/CommandPalette";
+
 
 export const metadata: Metadata = {
   title: "ILN | Invoice Liquidity Network",
@@ -54,6 +56,8 @@ export default function RootLayout({
             <OnboardingFlow />
           </WalletProvider>
         </ToastProvider>
+            <CommandPalette />
+
       </body>
     </html>
   );
