@@ -67,4 +67,48 @@ describe("createFreighterSigner", () => {
       "Freighter is connected to a different Stellar network.",
     );
   });
+  it("throws when Freighter is not installed", async () => {
+    vi.mocked(freighterApi.isConnected).mockResolvedValue({ isConnected: false });
+    const signer = createFreighterSigner();
+    await expect(signer.getPublicKey()).rejects.toThrow("Freighter extension is not installed or not available.");
+  });
+
+  it("throws when Freighter returns an error on connection check", async () => {
+    vi.mocked(freighterApi.isConnected).mockResolvedValue({ error: "Connection error" });
+    const signer = createFreighterSigner();
+    await expect(signer.getPublicKey()).rejects.toThrow("Connection error");
+  });
+
+  it("throws when window is undefined", async () => {
+    vi.stubGlobal("window", undefined);
+    const signer = createFreighterSigner();
+    await expect(signer.getPublicKey()).rejects.toThrow("Freighter signing is only available in browser environments.");
+  });
+
+  it("throws when getAddress returns an error", async () => {
+    vi.mocked(freighterApi.getAddress).mockResolvedValue({ error: "Address error" });
+    const signer = createFreighterSigner();
+    await expect(signer.getPublicKey()).rejects.toThrow("Address error");
+  });
+
+  it("throws when requestAccess returns an error", async () => {
+    vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "" });
+    vi.mocked(freighterApi.requestAccess).mockResolvedValue({ error: "Request error" });
+    const signer = createFreighterSigner();
+    await expect(signer.getPublicKey()).rejects.toThrow("Request error");
+  });
+
+  it("throws when getNetworkDetails returns an error", async () => {
+    vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "G123" });
+    vi.mocked(freighterApi.getNetworkDetails).mockResolvedValue({ error: "Network error" });
+    const signer = createFreighterSigner();
+    await expect(signer.signTransaction("unsigned-xdr", { networkPassphrase: "Test SDF Network ; September 2015" })).rejects.toThrow("Network error");
+  });
+
+  it("throws when signTransaction returns an error", async () => {
+    vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "G123" });
+    vi.mocked(freighterApi.signTransaction).mockResolvedValue({ error: "Sign error" });
+    const signer = createFreighterSigner();
+    await expect(signer.signTransaction("unsigned-xdr", { networkPassphrase: "Test SDF Network ; September 2015" })).rejects.toThrow("Sign error");
+  });
 });
