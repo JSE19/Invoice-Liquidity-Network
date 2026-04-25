@@ -5,5 +5,13 @@ export default defineConfig({
     environment: "node",
     restoreMocks: true,
     clearMocks: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov", "html"],
+      thresholds: {
+        lines: 85,
+        statements: 85,
+      },
+    },
   },
 });

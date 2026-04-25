@@ -1,34 +1,44 @@
-export type EventType = "funded" | "paid" | "defaulted" | "due_date_warning";
-export type ActorRole = "freelancer" | "lp" | "payer";
-export type DeliveryChannel = "email" | "webhook";
-export type WebhookStatus = "active" | "failed";
+export type InvoiceStatus = "Pending" | "Funded" | "Paid" | "Defaulted";
+export type ILNEventType = "submitted" | "funded" | "paid" | "defaulted";
 
-export interface InvoiceEvent {
-  eventId: string;
-  type: EventType;
-  invoiceId: number;
+export type NotificationTrigger =
+  | "invoice_funded"
+  | "invoice_paid"
+  | "invoice_defaulted"
+  | "invoice_due_soon"
+  | "invoice_overdue";
+
+export type SubscriptionChannel = "email" | "webhook";
+
+export interface Invoice {
+  id: number;
   freelancer: string;
   payer: string;
-  funder: string | null;
   amount: string;
-  dueDate: number;
-  discountRate: number;
-  settledOnTime?: boolean;
+  due_date: number;
+  discount_rate: number;
+  status: InvoiceStatus;
+  funder: string | null;
+  funded_at: number | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface Subscription {
-  id: string;
-  address: string;
-  role: ActorRole;
-  channel: DeliveryChannel;
-  email?: string;
-  webhookUrl?: string;
-  webhookStatus: WebhookStatus;
-  active: boolean;
+  id: number;
+  stellar_address: string;
+  channel: SubscriptionChannel;
+  destination: string;
+  triggers: NotificationTrigger[];
+  created_at: number;
 }
 
-export interface DeliveryResult {
-  success: boolean;
-  channel: DeliveryChannel;
-  subscriptionId: string;
+export interface NotificationPayload {
+  trigger: NotificationTrigger;
+  invoice: Invoice;
+  recipientAddress: string;
+  subject: string;
+  message: string;
+  actor: "freelancer" | "lp" | "payer";
+  eventType?: ILNEventType;
 }

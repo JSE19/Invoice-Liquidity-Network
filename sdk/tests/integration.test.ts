@@ -137,9 +137,9 @@ function unwrapResult(value: unknown): unknown {
 }
 
 describe.skipIf(!hasRequiredSecrets)("SDK testnet integration", () => {
-  const freelancerSigner = createKeypairSigner(FREELANCER_SECRET!);
-  const payerSigner = createKeypairSigner(PAYER_SECRET!);
-  const funderSigner = createKeypairSigner(FUNDER_SECRET!);
+  const freelancerSigner = FREELANCER_SECRET ? createKeypairSigner(FREELANCER_SECRET) : null as any;
+  const payerSigner = PAYER_SECRET ? createKeypairSigner(PAYER_SECRET) : null as any;
+  const funderSigner = FUNDER_SECRET ? createKeypairSigner(FUNDER_SECRET) : null as any;
 
   const freelancerSdk = new ILNSdk({ ...ILN_TESTNET, signer: freelancerSigner });
   const payerSdk = new ILNSdk({ ...ILN_TESTNET, signer: payerSigner });

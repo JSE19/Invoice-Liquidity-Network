@@ -96,6 +96,40 @@ interface Invoice {
 }
 ```
 
+## Notifications
+
+The SDK provides a `NotificationsClient` to programmatically manage your invoice notification subscriptions.
+
+```ts
+import { NotificationsClient, NotificationTrigger } from "@invoice-liquidity/sdk";
+
+const notifications = new NotificationsClient("http://localhost:4001");
+
+// Subscribe to email notifications
+const emailSub = await notifications.subscribeEmail(
+  "G...",
+  "user@example.com",
+  [NotificationTrigger.InvoiceFunded, NotificationTrigger.InvoiceSettled]
+);
+
+// Subscribe to webhook
+const webhookSub = await notifications.subscribeWebhook(
+  "G...",
+  "https://my-app.com/webhook",
+  [NotificationTrigger.DueDateWarning]
+);
+
+// Test webhook
+const testResult = await notifications.testWebhook(webhookSub.id);
+console.log(testResult.success); // true
+
+// List subscriptions
+const subs = await notifications.listSubscriptions("G...");
+
+// Unsubscribe
+await notifications.unsubscribe(emailSub.id);
+```
+
 ## Development
 
 ```bash

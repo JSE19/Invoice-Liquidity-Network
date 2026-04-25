@@ -1,0 +1,7 @@
+src/__tests__/api.test.ts(14,9): error TS2709: Cannot use namespace 'Database' as a type.
+src/__tests__/processor.test.ts(14,9): error TS2709: Cannot use namespace 'Database' as a type.
+src/db.ts(11,10): error TS2709: Cannot use namespace 'Database' as a type.
+src/db.ts(13,26): error TS2709: Cannot use namespace 'Database' as a type.
+src/db.ts(20,41): error TS2709: Cannot use namespace 'Database' as a type.
+src/db.ts(28,27): error TS2709: Cannot use namespace 'Database' as a type.
+src/db.ts(32,28): error TS2709: Cannot use namespace 'Database' as a type.
