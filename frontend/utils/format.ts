@@ -1,4 +1,3 @@
-// ─── Token display types ──────────────────────────────────────────────────────
 
 export interface TokenDisplayMeta {
   symbol: string;
