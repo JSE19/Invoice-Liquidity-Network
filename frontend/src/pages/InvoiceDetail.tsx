@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ActivityFeed from "../../components/ActivityFeed";
+import ShareButton from "../../components/ShareButton";
+import InvoiceQRModal from "../../components/InvoiceQRModal";
 import { useWallet } from "../../context/WalletContext";
 import { getInvoice, type Invoice } from "../../utils/soroban";
 import { formatAddress, formatDate, formatUSDC } from "../../utils/format";
@@ -21,6 +23,7 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showQR, setShowQR] = useState(false);
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -65,7 +68,7 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
   return (
     <main className="min-h-screen bg-surface-container-lowest">
       <Navbar />
-      
+
       <section className="pt-32 pb-16 px-6 md:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -85,22 +88,34 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
 
             <div className="flex flex-wrap gap-3">
               {isFreelancer && (
-                <Link
-                  href={{
-                    pathname: "/submit",
-                    query: {
-                      prefill_id: invoice.id.toString(),
-                      payer: invoice.payer,
-                      amount: (Number(invoice.amount) / 10_000_000).toString(),
-                      discount: (invoice.discount_rate / 100).toString(),
-                      token: invoice.tokenId || "",
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-surface-container-lowest shadow-lg hover:bg-primary/90 transition-all active:scale-[0.98]"
-                >
-                  <span className="material-symbols-outlined text-[20px]">content_copy</span>
-                  Submit similar
-                </Link>
+                <>
+                  <Link
+                    href={{
+                      pathname: "/submit",
+                      query: {
+                        prefill_id: invoice.id.toString(),
+                        payer: invoice.payer,
+                        amount: (Number(invoice.amount) / 10_000_000).toString(),
+                        discount: (invoice.discount_rate / 100).toString(),
+                        token: invoice.tokenId || "",
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-surface-container-lowest shadow-lg hover:bg-primary/90 transition-all active:scale-[0.98]"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">content_copy</span>
+                    Submit similar
+                  </Link>
+
+                  {/* Show QR Code button — freelancer view only */}
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/30 px-6 py-3.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container-high transition-all"
+                    aria-label="Show QR code"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">qr_code</span>
+                    Show QR code
+                  </button>
+                </>
               )}
               <Link
                 href="/dashboard"
@@ -148,6 +163,17 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Share on X — visible only for Paid invoices (freelancer or LP) */}
+              {invoice.status === "Paid" && (
+                <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Celebrate this win</h3>
+                  <ShareButton
+                    invoice={invoice}
+                    userAddress={address ?? null}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -158,6 +184,17 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
       </section>
 
       <Footer />
+
+      {/* QR Code modal */}
+      {showQR && (
+        <InvoiceQRModal
+          invoiceId={invoice.id}
+          amount={invoice.amount}
+          dueDate={invoice.due_date}
+          freelancer={invoice.freelancer}
+          onClose={() => setShowQR(false)}
+        />
+      )}
     </main>
   );
 }
