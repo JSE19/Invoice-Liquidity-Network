@@ -97,4 +97,53 @@ describe("NotificationsClient", () => {
       body: JSON.stringify({ id: 2 }),
     });
   });
+
+  it("throws when subscribeEmail fails", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Internal Server Error",
+    });
+
+    await expect(
+      client.subscribeEmail("G123", "test@test.com", [NotificationTrigger.InvoiceFunded])
+    ).rejects.toThrow("Failed to subscribe email: Internal Server Error");
+  });
+
+  it("throws when subscribeWebhook fails", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Bad Request",
+    });
+
+    await expect(
+      client.subscribeWebhook("G123", "https://hook.com", [NotificationTrigger.InvoiceFunded])
+    ).rejects.toThrow("Failed to subscribe webhook: Bad Request");
+  });
+
+  it("throws when unsubscribe fails", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Not Found",
+    });
+
+    await expect(client.unsubscribe(10)).rejects.toThrow("Failed to unsubscribe: Not Found");
+  });
+
+  it("throws when listSubscriptions fails", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Error",
+    });
+
+    await expect(client.listSubscriptions("G123")).rejects.toThrow("Failed to list subscriptions: Error");
+  });
+
+  it("throws when testWebhook fails", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Failed",
+    });
+
+    await expect(client.testWebhook(2)).rejects.toThrow("Failed to test webhook: Failed");
+  });
 });

@@ -1,0 +1,48 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  coverage:
+    name: Run tests and collect coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+          
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+          
+      - name: Run Rust Coverage
+        working-directory: invoice-liquidity-network
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --lcov --output-path rust-lcov.info
+        
+      - name: Install SDK Dependencies
+        working-directory: sdk
+        run: npm ci
+        
+      - name: Run SDK Coverage
+        working-directory: sdk
+        run: npm run test:coverage
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: invoice-liquidity-network/rust-lcov.info,sdk/coverage/lcov.info
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
