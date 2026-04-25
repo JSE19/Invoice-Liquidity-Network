@@ -2,7 +2,7 @@
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, Ledger},
+    testutils::{storage::Persistent, Address as _, Ledger},
     token::{Client as TokenClient, StellarAssetClient},
     Address, Env, Vec,
 };
@@ -68,14 +68,14 @@ fn test_submit_invoice_sets_ttl() {
     );
 
     let key = StorageKey::Invoice(id);
-    let ttl = t.env.storage().persistent().get_ttl(&key);
+    let ttl = t.env.as_contract(&t.contract.address, || t.env.storage().persistent().get_ttl(&key));
     
     // Check that TTL is set
     assert!(ttl > 0);
     
     // Verify InvoiceCount TTL as well
     let count_key = StorageKey::InvoiceCount;
-    let count_ttl = t.env.storage().persistent().get_ttl(&count_key);
+    let count_ttl = t.env.as_contract(&t.contract.address, || t.env.storage().persistent().get_ttl(&count_key));
     assert!(count_ttl > 0);
 }
 
@@ -95,18 +95,18 @@ fn test_fund_invoice_extends_ttl() {
     );
 
     let key = StorageKey::Invoice(id);
-    let initial_ttl = t.env.storage().persistent().get_ttl(&key);
+    let initial_ttl = t.env.as_contract(&t.contract.address, || t.env.storage().persistent().get_ttl(&key));
 
-    // Advance ledger state to simulate time passed
+    // Advance ledger state to simulate time passed (enough to cross threshold)
     let mut ledger = t.env.ledger().get();
-    ledger.sequence_number += 1000;
-    ledger.timestamp += 5000;
+    ledger.sequence_number += 1_500_000;
+    ledger.timestamp += 7_500_000;
     t.env.ledger().set(ledger);
 
     // Call fund_invoice which should refresh the TTL on the entry
     t.contract.fund_invoice(&t.funder, &id, &amount);
 
-    let updated_ttl = t.env.storage().persistent().get_ttl(&key);
+    let updated_ttl = t.env.as_contract(&t.contract.address, || t.env.storage().persistent().get_ttl(&key));
     
     // TTL should be at least equal to initial, effectively extended relative to the new ledger height
     assert!(updated_ttl >= initial_ttl);
@@ -193,7 +193,7 @@ fn test_storage_ttl_near_boundary() {
     );
 
     let key = StorageKey::Invoice(id);
-    let ttl = t.env.storage().persistent().get_ttl(&key);
+    let ttl = t.env.as_contract(&t.contract.address, || t.env.storage().persistent().get_ttl(&key));
 
     // Advance ledger to just before TTL expiry
     // If TTL is X ledgers, advance by X-1

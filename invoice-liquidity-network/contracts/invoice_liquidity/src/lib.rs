@@ -2,6 +2,7 @@
 
 mod errors;
 mod invoice;
+mod tests_regression;
 
 use soroban_sdk::{
     contract, contractimpl, symbol_short, vec, Address, Env, IntoVal, Symbol,
