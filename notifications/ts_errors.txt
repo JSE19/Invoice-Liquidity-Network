@@ -1,0 +1,29 @@
+src/__tests__/api.test.ts(6,10): error TS2305: Module '"vitest"' has no exported member 'beforeEach'.
+src/__tests__/api.test.ts(6,22): error TS2305: Module '"vitest"' has no exported member 'describe'.
+src/__tests__/api.test.ts(6,32): error TS2305: Module '"vitest"' has no exported member 'expect'.
+src/__tests__/api.test.ts(6,40): error TS2305: Module '"vitest"' has no exported member 'it'.
+src/__tests__/api.test.ts(14,9): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/__tests__/processor.test.ts(6,10): error TS2305: Module '"vitest"' has no exported member 'beforeEach'.
+src/__tests__/processor.test.ts(6,22): error TS2305: Module '"vitest"' has no exported member 'describe'.
+src/__tests__/processor.test.ts(6,32): error TS2305: Module '"vitest"' has no exported member 'expect'.
+src/__tests__/processor.test.ts(6,40): error TS2305: Module '"vitest"' has no exported member 'it'.
+src/__tests__/processor.test.ts(6,44): error TS2305: Module '"vitest"' has no exported member 'vi'.
+src/__tests__/processor.test.ts(8,10): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'nativeToScVal'.
+src/__tests__/processor.test.ts(14,9): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/api.ts(27,19): error TS2339: Property 'json' does not exist on type '() => any'.
+src/db.ts(11,10): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/db.ts(13,26): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/db.ts(20,41): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/db.ts(28,27): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/db.ts(32,28): error TS2702: 'Database' only refers to a type, but is being used as a namespace here.
+src/poller.ts(1,15): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'rpc'.
+src/processor.ts(1,15): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'rpc'.
+src/processor.ts(2,10): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'scValToNative'.
+src/rpc.ts(2,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'Account'.
+src/rpc.ts(3,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'Address'.
+src/rpc.ts(4,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'nativeToScVal'.
+src/rpc.ts(5,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'Operation'.
+src/rpc.ts(6,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'rpc'.
+src/rpc.ts(7,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'scValToNative'.
+src/rpc.ts(8,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'TransactionBuilder'.
+src/rpc.ts(9,3): error TS2305: Module '"@stellar/stellar-sdk"' has no exported member 'xdr'.

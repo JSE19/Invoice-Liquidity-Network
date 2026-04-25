@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import InvoiceFilterBar from "../../components/InvoiceFilterBar";
 import { useWallet } from "../../context/WalletContext";
 import { useToast } from "../../context/ToastContext";
+import { useApprovedTokens } from "../../hooks/useApprovedTokens";
+import { applyInvoiceFilters, useInvoiceFilters } from "../../hooks/useInvoiceFilters";
 import {
   getAllInvoices,
   submitInvoice,
@@ -18,6 +20,10 @@ import {
 } from "../../utils/format";
 import { rpc, TransactionBuilder } from "@stellar/stellar-sdk";
 import { RPC_URL, NETWORK_PASSPHRASE } from "../../constants";
+import SkeletonRow, { FREELANCER_COLUMNS } from "../../components/SkeletonRow";
+import { ExportButton } from "../../components/ExportButton";
+import { EmptyState } from "../../components/EmptyState";
+import { FreelancerEmptyIllustration } from "../../components/illustrations/EmptyIllustrations";
 
 const server = new rpc.Server(RPC_URL);
 
@@ -64,6 +70,7 @@ export default function FreelancerPage() {
   const { address, isConnected, connect } = useWallet();
   const { addToast, updateToast } = useToast();
   const { signTx } = useWallet();
+  const { tokenMap, defaultToken } = useApprovedTokens();
 
   const [screen, setScreen] = useState<Screen>("submit");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -74,6 +81,12 @@ export default function FreelancerPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+  } = useInvoiceFilters({ namespace: "freelancerInvoices" });
 
   const fetchMyInvoices = useCallback(async () => {
     if (!address) return;
@@ -99,6 +112,17 @@ export default function FreelancerPage() {
       }
     };
   }, [screen, fetchMyInvoices]);
+
+  const filteredInvoices = useMemo(
+    () =>
+      applyInvoiceFilters(invoices, filters, {
+        resolveTokenSymbol: (invoice) => {
+          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
+          return token?.symbol ?? "USDC";
+        },
+      }),
+    [defaultToken?.contractId, filters, invoices, tokenMap],
+  );
 
   function validate(): boolean {
     const next: Partial<FormState> = {};
@@ -583,6 +607,15 @@ export default function FreelancerPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
+                  <div className="px-6 pt-4 flex flex-col gap-3">
+                    <InvoiceFilterBar
+                      filters={filters}
+                      onFiltersChange={setFilters}
+                      onClearFilters={clearFilters}
+                      activeFilterCount={activeFilterCount}
+                    />
+                    <ExportButton data={filteredInvoices} filenamePrefix="iln-freelancer-export" />
+                  </div>
                   <table className="w-full text-left" id="my-invoices-table">
                     <thead className="bg-surface-container-low">
                       <tr>
@@ -605,7 +638,7 @@ export default function FreelancerPage() {
                           >
                             <span className="flex items-center justify-center gap-2">
                               <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                              {t("freelancer.invoices.loadingInvoices")}
+                              Loading invoices from Stellar…
                             </span>
                           </td>
                         </tr>
@@ -620,19 +653,19 @@ export default function FreelancerPage() {
                                 inbox
                               </span>
                               <p className="text-on-surface-variant italic text-sm">
-                                {t("freelancer.invoices.noInvoicesFound")}
+                                No invoices found for your address.
                               </p>
                               <button
                                 onClick={() => setScreen("submit")}
                                 className="text-primary text-sm font-bold hover:underline"
                               >
-                                {t("freelancer.invoices.submitFirst")}
+                                Submit your first invoice →
                               </button>
                             </div>
                           </td>
                         </tr>
                       ) : (
-                        invoices.map((inv) => (
+                        filteredInvoices.map((inv) => (
                           <tr
                             key={inv.id.toString()}
                             className="hover:bg-surface-variant/10 transition-colors"

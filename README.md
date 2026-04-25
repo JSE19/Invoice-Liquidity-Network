@@ -1,5 +1,6 @@
 # Invoice Liquidity Network
 
+[![codecov](https://codecov.io/gh/Ojukwu-Chinedu/Invoice-Liquidity-Network/branch/main/graph/badge.svg)](https://codecov.io/gh/Ojukwu-Chinedu/Invoice-Liquidity-Network)
 [![CI](https://github.com/Nursca/Invoice-Liquidity-Network/actions/workflows/ci.yml/badge.svg)](https://github.com/Nursca/Invoice-Liquidity-Network/actions/workflows/ci.yml)
 
 **Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
@@ -329,6 +330,10 @@ cargo build --target wasm32-unknown-unknown --release
 
 # Run tests
 cargo test
+
+#### Regression Testing
+When fixing a bug, you must add a regression test to `contracts/invoice_liquidity/src/tests_regression.rs`.
+Please include a comment with `/// Regression for: [Issue/PR description]` to document the edge-case and prevent future regressions.
 
 # Deploy to testnet
 stellar contract deploy \
