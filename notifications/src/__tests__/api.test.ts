@@ -11,7 +11,7 @@ import { createDb, setDb } from "../db";
 
 const app = createApp();
 
-let db: Database.Database;
+let db: InstanceType<typeof Database>;
 
 beforeEach(() => {
   db = createDb(":memory:");

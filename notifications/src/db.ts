@@ -8,16 +8,18 @@ import type {
   SubscriptionChannel,
 } from "./types";
 
-let _db: Database.Database | null = null;
+type SQLiteDatabase = InstanceType<typeof Database>;
 
-export function getDb(): Database.Database {
+let _db: SQLiteDatabase | null = null;
+
+export function getDb(): SQLiteDatabase {
   if (!_db) {
     _db = createDb(CONFIG.dbPath);
   }
   return _db;
 }
 
-export function createDb(path: string): Database.Database {
+export function createDb(path: string): SQLiteDatabase {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -25,11 +27,11 @@ export function createDb(path: string): Database.Database {
   return db;
 }
 
-export function setDb(db: Database.Database): void {
+export function setDb(db: SQLiteDatabase): void {
   _db = db;
 }
 
-function runMigrations(db: Database.Database): void {
+function runMigrations(db: SQLiteDatabase): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS invoices (
       id            INTEGER PRIMARY KEY,

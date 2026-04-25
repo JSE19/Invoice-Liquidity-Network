@@ -11,7 +11,7 @@ import * as rpc from "../rpc";
 import * as delivery from "../delivery";
 import { processEvent, processScheduledNotifications } from "../processor";
 
-let db: Database.Database;
+let db: InstanceType<typeof Database>;
 
 beforeEach(() => {
   db = createDb(":memory:");
