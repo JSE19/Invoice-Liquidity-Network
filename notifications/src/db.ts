@@ -216,6 +216,25 @@ export function getSubscriptionsByAddress(address: string): Subscription[] {
     })) as Subscription[];
 }
 
+export function getSubscriptionById(id: number): Subscription | undefined {
+  const row = getDb()
+    .prepare("SELECT * FROM subscriptions WHERE id = ?")
+    .get(id) as any;
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    id: row.id,
+    stellar_address: row.stellar_address,
+    channel: row.channel,
+    destination: row.destination,
+    triggers: JSON.parse(row.triggers),
+    created_at: row.created_at,
+  } as Subscription;
+}
+
 export function deleteSubscriptionById(id: number): boolean {
   const result = getDb()
     .prepare("DELETE FROM subscriptions WHERE id = ?")
