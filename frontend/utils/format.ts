@@ -1,8 +1,19 @@
+
 export interface TokenDisplayMeta {
   symbol: string;
   decimals: number;
 }
 
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+
+/**
+ * Formats a raw on-chain amount (bigint, in smallest unit) using the token's
+ * decimal precision. Trims trailing zeros and groups the integer part.
+ *
+ * Examples:
+ *   formatTokenAmount(10_000_000n, { symbol: "USDC", decimals: 7 }) → "1 USDC"
+ *   formatTokenAmount(15_500_000n, { symbol: "USDC", decimals: 7 }) → "1.55 USDC"
+ */
 export function formatTokenAmount(
   amount: bigint,
   token: TokenDisplayMeta = { symbol: "USDC", decimals: 7 },
@@ -17,11 +28,14 @@ export function formatTokenAmount(
     .padStart(token.decimals, "0")
     .replace(/0+$/, "");
   const formattedWhole = new Intl.NumberFormat("en-US").format(Number(whole));
-  const value = trimmedFraction ? `${formattedWhole}.${trimmedFraction}` : formattedWhole;
+  const value = trimmedFraction
+    ? `${formattedWhole}.${trimmedFraction}`
+    : formattedWhole;
 
   return `${negative ? "-" : ""}${value} ${token.symbol}`;
 }
 
+/** Shorthand for USDC display — used throughout the app. */
 export function formatUSDC(amount: bigint): string {
   return formatTokenAmount(amount, { symbol: "USDC", decimals: 7 });
 }

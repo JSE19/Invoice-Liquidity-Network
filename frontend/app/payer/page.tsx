@@ -1,7 +1,8 @@
 "use client";
 
 import { rpc, TransactionBuilder } from "@stellar/stellar-sdk";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import InvoiceFilterBar from "../../components/InvoiceFilterBar";
 import Footer from "../../components/Footer";
 import Navbar from "../../components/Navbar";
 import DueDateCountdown from "../../components/DueDateCountdown";
@@ -9,6 +10,7 @@ import { RPC_URL } from "../../constants";
 import { useToast } from "../../context/ToastContext";
 import { useWallet } from "../../context/WalletContext";
 import { useApprovedTokens } from "../../hooks/useApprovedTokens";
+import { applyInvoiceFilters, useInvoiceFilters } from "../../hooks/useInvoiceFilters";
 import { formatAddress, formatDate, formatTokenAmount } from "../../utils/format";
 import { getAllInvoices, Invoice, markPaid } from "../../utils/soroban";
 import TokenSelector, { TokenAmount } from "../../components/TokenSelector";
@@ -244,6 +246,12 @@ export default function PayerDashboard() {
   const [justPaid, setJustPaid] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<keyof Invoice>("due_date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+  } = useInvoiceFilters({ namespace: "payerInvoices" });
 
   const fetchData = useCallback(async () => {
     if (!isConnected || !address) return;
@@ -273,10 +281,23 @@ export default function PayerDashboard() {
       (inv.status === "Funded" || justPaid.has(inv.id.toString()))
   );
 
-  const sortedInvoices = [...myInvoices].sort((a, b) => {
+  const filteredInvoices = useMemo(
+    () =>
+      applyInvoiceFilters(myInvoices, filters, {
+        resolveTokenSymbol: (invoice) => {
+          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
+          return token?.symbol ?? "USDC";
+        },
+      }),
+    [defaultToken?.contractId, filters, myInvoices, tokenMap],
+  );
+
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     const av = a[sortKey] as string | number | bigint | undefined;
     const bv = b[sortKey] as string | number | bigint | undefined;
-    if (av === undefined || bv === undefined) return 0;
+    if (av === undefined && bv === undefined) return 0;
+    if (av === undefined) return 1;
+    if (bv === undefined) return -1;
     if (av < bv) return sortOrder === "asc" ? -1 : 1;
     if (av > bv) return sortOrder === "asc" ? 1 : -1;
     return 0;
@@ -581,6 +602,14 @@ export default function PayerDashboard() {
       <section className="py-8 px-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/10 overflow-hidden">
+            <div className="p-6 pb-0">
+              <InvoiceFilterBar
+                filters={filters}
+                onFiltersChange={setFilters}
+                onClearFilters={clearFilters}
+                activeFilterCount={activeFilterCount}
+              />
+            </div>
 
             {/* Table */}
             <div className="overflow-x-auto">

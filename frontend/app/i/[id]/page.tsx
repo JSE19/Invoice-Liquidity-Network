@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getInvoice, type Invoice } from "../../../utils/soroban";
 import { formatUsdcFromStroops } from "../../../utils/invoiceSubmission";
@@ -402,12 +402,14 @@ function useInvoicePolling(id: bigint | null) {
 export default function InvoiceStatusPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
+
   // Parse & validate the invoice ID from the URL
   const invoiceId: bigint | null = (() => {
     try {
-      const parsed = BigInt(params.id);
+      const parsed = BigInt(id);
       return parsed > 0n ? parsed : null;
     } catch {
       return null;
@@ -495,7 +497,7 @@ export default function InvoiceStatusPage({
           </span>
           <h1 className="mt-4 text-2xl font-headline">Invoice not found</h1>
           <p className="mt-2 text-sm text-on-surface-variant">{errorMessage}</p>
-          <p className="mt-1 text-xs text-on-surface-variant/60">Invoice #{params.id}</p>
+          <p className="mt-1 text-xs text-on-surface-variant/60">Invoice #{id}</p>
         </div>
       </main>
     );

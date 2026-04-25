@@ -50,4 +50,33 @@ describe('AnalyticsSDK', () => {
     await sdk.getInvoiceHistory('addr1', 'payer');
     expect(mockedAxios.get).toHaveBeenCalledWith('https://api.test/history/addr1?role=payer');
   });
+
+  it('should fetch LP stats', async () => {
+    mockedAxios.get.mockResolvedValueOnce({ data: { invoiceCount: 5 } });
+    const data = await sdk.getLPStats('G123');
+    expect(data.invoiceCount).toBe(5);
+    expect(mockedAxios.get).toHaveBeenCalledWith('https://api.test/lps/G123/stats');
+  });
+
+  it('should fetch freelancer stats', async () => {
+    mockedAxios.get.mockResolvedValueOnce({ data: { submitted: 10 } });
+    const data = await sdk.getFreelancerStats('G123');
+    expect(data.submitted).toBe(10);
+    expect(mockedAxios.get).toHaveBeenCalledWith('https://api.test/freelancers/G123/stats');
+  });
+
+  it('should fetch top LPs', async () => {
+    mockedAxios.get.mockResolvedValueOnce({ data: [{ address: 'G123' }] });
+    const data = await sdk.getTopLPs(5, 'month');
+    expect(data[0].address).toBe('G123');
+    expect(mockedAxios.get).toHaveBeenCalledWith('https://api.test/lps/top?limit=5&period=month');
+  });
+
+  it('should clear cache', async () => {
+    mockedAxios.get.mockResolvedValue({ data: { totalInvoices: 10 } });
+    await sdk.getProtocolStats();
+    sdk.clearCache();
+    await sdk.getProtocolStats();
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+  });
 });
