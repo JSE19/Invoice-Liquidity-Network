@@ -111,7 +111,7 @@
                   "u64": "1702592000"
                 },
                 {
-                  "u32": 300
+                  "u32": 5000
                 },
                 {
                   "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
@@ -371,7 +371,7 @@
                       "symbol": "discount_rate"
                     },
                     "val": {
-                      "u32": 300
+                      "u32": 5000
                     }
                   },
                   {
@@ -924,7 +924,7 @@
                     "symbol": "discount_rate"
                   },
                   "val": {
-                    "u32": 300
+                    "u32": 5000
                   }
                 },
                 {

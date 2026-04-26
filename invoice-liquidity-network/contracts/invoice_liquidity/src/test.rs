@@ -667,6 +667,51 @@ fn test_claim_default_twice_fails() {
 }
 
 #[test]
+fn test_expire_pending_invoice_after_due_date() {
+    let t = setup();
+    let id = submit_standard_invoice(&t);
+
+    let mut ledger = t.env.ledger().get();
+    ledger.timestamp += DUE_DATE_OFFSET + 1;
+    t.env.ledger().set(ledger);
+
+    t.contract.expire_invoice(&id);
+
+    let invoice = t.contract.get_invoice(&id);
+    assert_eq!(invoice.status, InvoiceStatus::Expired);
+}
+
+#[test]
+fn test_expire_pending_invoice_before_due_date_fails() {
+    let t = setup();
+    let id = submit_standard_invoice(&t);
+
+    let result = t.contract.try_expire_invoice(&id);
+    assert_eq!(result, Err(Ok(ContractError::NotYetDefaulted)));
+
+    let invoice = t.contract.get_invoice(&id);
+    assert_eq!(invoice.status, InvoiceStatus::Pending);
+}
+
+#[test]
+fn test_fund_expired_invoice_fails() {
+    let t = setup();
+    let id = submit_standard_invoice(&t);
+
+    let mut ledger = t.env.ledger().get();
+    ledger.timestamp += DUE_DATE_OFFSET + 1;
+    t.env.ledger().set(ledger);
+
+    t.contract.expire_invoice(&id);
+
+    let result = t.contract.try_fund_invoice(&t.funder, &id, &INVOICE_AMOUNT);
+    assert_eq!(result, Err(Ok(ContractError::InvoiceExpired)));
+
+    let invoice = t.contract.get_invoice(&id);
+    assert_eq!(invoice.status, InvoiceStatus::Expired);
+}
+
+#[test]
 fn test_new_payer_score_is_neutral() {
     let t = setup();
 

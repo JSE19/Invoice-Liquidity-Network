@@ -288,9 +288,17 @@ impl InvoiceLiquidityContract {
 
         let mut invoice = load_invoice(&env, invoice_id);
 
+        if invoice.status == InvoiceStatus::Pending && env.ledger().timestamp() >= invoice.due_date
+        {
+            invoice.status = InvoiceStatus::Expired;
+            save_invoice(&env, &invoice);
+            return Err(ContractError::InvoiceExpired);
+        }
+
         match invoice.status {
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => return Err(ContractError::InvoiceExpired),
             InvoiceStatus::Funded => return Err(ContractError::AlreadyFunded),
             InvoiceStatus::Pending | InvoiceStatus::PartiallyFunded => {} // all good
             InvoiceStatus::Cancelled => return Err(ContractError::InvoiceNotFound),
@@ -387,6 +395,7 @@ impl InvoiceLiquidityContract {
             }
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => return Err(ContractError::InvoiceExpired),
             InvoiceStatus::Cancelled => return Err(ContractError::InvoiceNotFound),
         }
 
@@ -424,6 +433,7 @@ impl InvoiceLiquidityContract {
             }
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => return Err(ContractError::InvoiceExpired),
             InvoiceStatus::Cancelled => return Err(ContractError::InvoiceNotFound),
         }
 
@@ -438,6 +448,36 @@ impl InvoiceLiquidityContract {
         });
 
         Ok(())
+    }
+
+    // ------------------------------------------------------------
+    // expire_invoice
+    // ------------------------------------------------------------
+    pub fn expire_invoice(env: Env, invoice_id: u64) -> Result<(), ContractError> {
+        if !invoice_exists(&env, invoice_id) {
+            return Err(ContractError::InvoiceNotFound);
+        }
+
+        let mut invoice = load_invoice(&env, invoice_id);
+
+        if env.ledger().timestamp() < invoice.due_date {
+            return Err(ContractError::NotYetDefaulted);
+        }
+
+        match invoice.status {
+            InvoiceStatus::Pending => {
+                invoice.status = InvoiceStatus::Expired;
+                save_invoice(&env, &invoice);
+                Ok(())
+            }
+            InvoiceStatus::PartiallyFunded | InvoiceStatus::Funded => {
+                Err(ContractError::AlreadyFunded)
+            }
+            InvoiceStatus::Paid => Err(ContractError::AlreadyPaid),
+            InvoiceStatus::Defaulted => Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => Err(ContractError::InvoiceExpired),
+            InvoiceStatus::Cancelled => Err(ContractError::InvoiceNotFound),
+        }
     }
 
     // ------------------------------------------------------------
@@ -458,6 +498,7 @@ impl InvoiceLiquidityContract {
             }
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => return Err(ContractError::InvoiceExpired),
             InvoiceStatus::Funded => {}
             InvoiceStatus::Cancelled => return Err(ContractError::InvoiceNotFound),
         }
@@ -545,6 +586,7 @@ impl InvoiceLiquidityContract {
                 Ok(0)
             }
             InvoiceStatus::Defaulted => Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => Err(ContractError::InvoiceExpired),
             InvoiceStatus::Cancelled => Err(ContractError::InvoiceNotFound),
             InvoiceStatus::Paid => {
                 // Yield = the discount amount the LP earned
@@ -598,6 +640,7 @@ impl InvoiceLiquidityContract {
             }
             InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
+            InvoiceStatus::Expired => return Err(ContractError::InvoiceExpired),
             InvoiceStatus::Cancelled => return Err(ContractError::InvoiceNotFound),
         }
 
