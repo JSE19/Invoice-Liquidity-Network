@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useToast } from "../../context/ToastContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
@@ -21,11 +22,25 @@ interface InvoiceDetailPageProps {
 export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
   const router = useRouter();
   const { address } = useWallet();
+  const { addToast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [payerLinkCopied, setPayerLinkCopied] = useState(false);
   const { tokens, tokenMap, defaultToken } = useApprovedTokens();
+
+  const handleCopyPayerLink = async () => {
+    const payUrl = `${window.location.origin}/pay/${invoice!.id}`;
+    try {
+      await navigator.clipboard.writeText(payUrl);
+      setPayerLinkCopied(true);
+      addToast({ type: "success", title: "Link copied!", message: "Direct settlement link ready to share with the payer." });
+      setTimeout(() => setPayerLinkCopied(false), 2_500);
+    } catch {
+      addToast({ type: "error", title: "Copy failed", message: "Unable to copy link. Please copy the URL manually." });
+    }
+  };
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -107,6 +122,24 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                     <span className="material-symbols-outlined text-[20px]">content_copy</span>
                     Submit similar
                   </Link>
+
+                  {/* Copy payer invite link — freelancer only, non-paid invoices */}
+                  {invoice.status !== "Paid" && (
+                    <button
+                      id="copy-payer-link"
+                      onClick={handleCopyPayerLink}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-6 py-3.5 text-sm font-bold text-primary hover:bg-primary/20 transition-all active:scale-[0.98]"
+                      aria-label={payerLinkCopied ? "Link copied to clipboard" : "Copy payer settlement link"}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[20px]"
+                        style={{ fontVariationSettings: payerLinkCopied ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        {payerLinkCopied ? "check" : "forward_to_inbox"}
+                      </span>
+                      {payerLinkCopied ? "Copied!" : "Copy payer link"}
+                    </button>
+                  )}
 
                   {/* Show QR Code button — freelancer view only */}
                   <button
