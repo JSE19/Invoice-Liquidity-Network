@@ -6,11 +6,11 @@ import { useWallet } from "../context/WalletContext";
 import { useToast } from "../context/ToastContext";
 import TokenSelector, { TokenAmount } from "./TokenSelector";
 import InvoiceFilterBar from "./InvoiceFilterBar";
-import { useRouter } from "next/navigation";
 import { useApprovedTokens } from "../hooks/useApprovedTokens";
 import { applyInvoiceFilters, useInvoiceFilters } from "../hooks/useInvoiceFilters";
 import SkeletonRow, { LP_DISCOVERY_COLUMNS } from "./SkeletonRow";
 import FundConfirmModal from "./FundConfirmModal";
+import InvoiceTable, { ColumnDefinition } from "./InvoiceTable";
 import {
   claimDefault,
   getTokenAllowance,
@@ -35,7 +35,7 @@ type Tab = "discovery" | "my-funded" | "watchlist";
 export default function LPDashboard() {
   const router = useRouter();
   const { address, connect, signTx } = useWallet();
-  const { addToast } = useToast();
+  const { addToast, updateToast } = useToast();
   const { tokenMap, defaultToken } = useApprovedTokens();
   const { t, i18n } = useTranslation();
   const getLocale = () => i18n.language === "es" ? "es-ES" : "en-US";
@@ -51,7 +51,6 @@ export default function LPDashboard() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [claimingInvoiceId, setClaimingInvoiceId] = useState<string | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
-  const router = useRouter();
 
   const {
     filters,
@@ -251,7 +250,7 @@ export default function LPDashboard() {
       id: "freelancer",
       label: "Freelancer",
       sortable: false,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <div className="flex flex-col">
           <span className="text-sm font-medium">{formatAddress(inv.freelancer)}</span>
           <span className="text-[10px] text-on-surface-variant">Payer: {formatAddress(inv.payer)}</span>
@@ -262,7 +261,7 @@ export default function LPDashboard() {
       id: "amount",
       label: "Amount",
       sortable: true,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <TokenAwareAmount amount={inv.amount} invoice={inv} tokenMap={tokenMap} defaultToken={defaultToken} />
       ),
     },
@@ -270,7 +269,7 @@ export default function LPDashboard() {
       id: "discount_rate",
       label: "Discount",
       sortable: true,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <span className="bg-primary-container text-on-primary-container px-2 py-0.5 rounded text-xs font-bold">
           {(inv.discount_rate / 100).toFixed(2)}%
         </span>
@@ -280,13 +279,13 @@ export default function LPDashboard() {
       id: "due_date",
       label: "Due Date",
       sortable: true,
-      renderCell: (inv) => <span className="text-sm">{formatDate(inv.due_date)}</span>,
+      renderCell: (inv: Invoice) => <span className="text-sm">{formatDate(inv.due_date)}</span>,
     },
     {
       id: "yield",
       label: "Est. Yield",
       sortable: false,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <span className="font-bold text-green-600">
           <TokenAwareAmount
             amount={calculateYield(inv.amount, inv.discount_rate)}
@@ -305,7 +304,7 @@ export default function LPDashboard() {
       id: "risk",
       label: "Risk",
       sortable: true,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <RiskBadge
           risk={payerRisks.get(inv.payer) ?? "Unknown"}
           score={payerScores.get(inv.payer) ?? null}
@@ -316,7 +315,7 @@ export default function LPDashboard() {
       id: "actions",
       label: "",
       sortable: false,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <div className="flex items-center justify-end gap-2 text-right">
           <button
             onClick={(e) => handleWatchlistToggle(inv.id, e)}
@@ -349,7 +348,7 @@ export default function LPDashboard() {
       id: "watchAddedAt",
       label: "Added",
       sortable: true,
-      renderCell: (inv) => (
+      renderCell: (inv: any) => (
         <span className="text-xs text-on-surface-variant">
           {new Date(inv.watchAddedAt).toLocaleDateString(getLocale())}
         </span>
@@ -359,7 +358,7 @@ export default function LPDashboard() {
       id: "actions",
       label: "",
       sortable: false,
-      renderCell: (inv) => (
+      renderCell: (inv: Invoice) => (
         <div className="flex items-center justify-end gap-2 text-right">
           <button
             onClick={(e) => handleWatchlistToggle(inv.id, e)}

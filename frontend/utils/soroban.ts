@@ -7,6 +7,7 @@ import {
   TransactionBuilder,
   Transaction,
   Operation,
+  Contract,
   Account,
   BASE_FEE,
 } from "@stellar/stellar-sdk";
@@ -30,12 +31,12 @@ const DEFAULT_TOKEN_ALLOWANCE_LEDGER_BUFFER = 20_000;
 
 export interface Invoice {
   id: bigint;
+  status: string;
   freelancer: string;
   payer: string;
   amount: bigint;
   due_date: bigint;
   discount_rate: number;
-  status: string;
   funder?: string;
   funded_at?: bigint;
   token?: string;
@@ -518,6 +519,39 @@ export async function updateInvoice(
   }
 
   const finalTx = rpc.assembleTransaction(tx, sim).build();
+  return { tx: finalTx as any };
+}
+
+export async function cancelInvoice(
+  freelancer: string,
+  invoiceId: bigint
+): Promise<{ tx: any }> {
+  // Use a default sequence number / account for preparing or real one if needed
+  let account: Account;
+  try {
+    account = await server.getAccount(freelancer);
+  } catch {
+    account = new Account(freelancer, "1");
+  }
+  
+  const contract = new Contract(CONTRACT_ID);
+
+  const txUrl = new TransactionBuilder(account, { 
+    fee: BASE_FEE, 
+    networkPassphrase: NETWORK_PASSPHRASE 
+  })
+    .addOperation(
+      contract.call("cancel_invoice", nativeToScVal(invoiceId, { type: "u64" }))
+    )
+    .setTimeout(60 * 5)
+    .build();
+
+  const sim = await server.simulateTransaction(txUrl);
+  if (!rpc.Api.isSimulationSuccess(sim)) {
+    throw new Error(`Simulation failed: ${(sim as any).error}`);
+  }
+
+  const finalTx = rpc.assembleTransaction(txUrl, sim).build();
   return { tx: finalTx as any };
 }
 

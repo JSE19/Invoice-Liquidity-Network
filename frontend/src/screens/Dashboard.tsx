@@ -15,6 +15,7 @@ import { type Invoice } from "../../utils/soroban";
 import { useInvoices } from "../../hooks/useInvoices";
 import InvoiceStatusBadge from "../../components/InvoiceStatusBadge";
 import LastUpdated from "../../components/LastUpdated";
+import BulkActionBar from "../components/BulkActionBar";
 
 const STELLAR_EXPERT_CONTRACT_URL = `https://stellar.expert/explorer/${NETWORK_NAME.toLowerCase()}/contract/${CONTRACT_ID}`;
 
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Load view preference
   useEffect(() => {
@@ -90,6 +92,60 @@ export default function DashboardPage() {
     setSortOrder("asc");
   };
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const newSelected = new Set(selectedIds);
+      let deselectedCount = 0;
+      displayedInvoices.forEach(inv => {
+        if (inv.status === "Pending") {
+          newSelected.add(inv.id.toString());
+        } else {
+          deselectedCount++;
+        }
+      });
+      setSelectedIds(newSelected);
+      if (deselectedCount > 0) {
+        addToast({
+          type: "error", // Changing this from info to error or success as a workaround since info might not exist
+          title: "Selection modified",
+          message: `${deselectedCount} non-pending invoices were automatically skipped.`,
+        });
+      }
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const toggleInvoiceSelection = (inv: Invoice) => {
+    if (inv.status !== "Pending") {
+      addToast({
+        type: "error",
+        title: "Cannot select",
+        message: "Only Pending invoices can be selected for bulk cancellation.",
+      });
+      return;
+    }
+    
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(inv.id.toString())) {
+      newSelected.delete(inv.id.toString());
+    } else {
+      newSelected.add(inv.id.toString());
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const selectedInvoices = useMemo(
+    () => myInvoices.filter((inv) => selectedIds.has(inv.id.toString())),
+    [myInvoices, selectedIds]
+  );
+
+  const isAllPendingSelected = useMemo(() => {
+    const pendingInvoices = displayedInvoices.filter(inv => inv.status === "Pending");
+    if (pendingInvoices.length === 0) return false;
+    return pendingInvoices.every(inv => selectedIds.has(inv.id.toString()));
+  }, [displayedInvoices, selectedIds]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>, invoice: Invoice, index: number) => {
     const rowElements = Array.from(e.currentTarget.parentElement?.querySelectorAll('tr[role="row"]') || []);
 
@@ -111,7 +167,7 @@ export default function DashboardPage() {
         if (invoice.status === "Pending") {
           e.preventDefault();
           addToast({
-            type: "info",
+            type: "success",
             title: "Cancel Action",
             message: `Cancellation for invoice #${invoice.id.toString()} triggered via shortcut. Contract implementation pending.`,
           });
@@ -222,7 +278,17 @@ export default function DashboardPage() {
               <table className="w-full text-left">
                 <thead className="bg-surface-container-low">
                   <tr>
-                    <th className="px-4 md:px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">ID</th>
+                    <th className="px-4 py-4 pl-6 w-12">
+                      <input 
+                        type="checkbox"
+                        checked={isAllPendingSelected}
+                        onChange={handleSelectAll}
+                        disabled={displayedInvoices.filter(i => i.status === "Pending").length === 0}
+                        className="w-4 h-4 rounded border-outline-variant/50 text-primary focus:ring-primary/40 bg-surface cursor-pointer"
+                        title="Select all Pending invoices"
+                      />
+                    </th>
+                    <th className="px-2 md:px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">ID</th>
                     <th className="px-4 md:px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Payer</th>
                     <th
                       className="px-4 md:px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant cursor-pointer"
@@ -238,7 +304,7 @@ export default function DashboardPage() {
                       Due Date {sortKey === "due_date" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
                     </th>
                     <th className="px-4 md:px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
-                    <th className="px-4 md:px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Links</th>
+                    <th className="px-4 md:px-6 py-4 pr-6 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Links</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
@@ -261,9 +327,21 @@ export default function DashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    displayedInvoices.map((invoice) => (
-                      <tr key={invoice.id.toString()} className="hover:bg-surface-container-low">
-                        <td className="px-4 md:px-6 py-5 font-bold text-primary">#{invoice.id.toString()}</td>
+                    displayedInvoices.map((invoice, index) => (
+                      <tr 
+                        key={invoice.id.toString()} 
+                        className={`transition-colors ${selectedIds.has(invoice.id.toString()) ? "bg-primary/5" : "hover:bg-surface-container-low"}`}
+                      >
+                        <td className="px-4 py-5 pl-6">
+                          <input 
+                            type="checkbox"
+                            checked={selectedIds.has(invoice.id.toString())}
+                            onChange={() => toggleInvoiceSelection(invoice)}
+                            disabled={invoice.status !== "Pending"}
+                            className="w-4 h-4 rounded border-outline-variant/50 text-primary focus:ring-primary/40 bg-surface cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="px-2 md:px-4 py-5 font-bold text-primary">#{invoice.id.toString()}</td>
                         <td className="px-4 md:px-6 py-5">
                           <div className="inline-flex items-center gap-2">
                             <span className="font-mono text-sm">{formatAddress(invoice.payer)}</span>
@@ -347,6 +425,13 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+
+      <BulkActionBar 
+        selectedInvoices={selectedInvoices} 
+        onClearSelection={() => setSelectedIds(new Set())} 
+        onRefresh={refetch as any} 
+      />
+
       <Footer />
 
       {/* QR Code modal — opened from row action menu */}
