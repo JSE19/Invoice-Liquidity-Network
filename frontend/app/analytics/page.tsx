@@ -19,19 +19,10 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { Metadata } from "next";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  TooltipProps,
-} from "recharts";
 import { NETWORK_NAME } from "../../constants";
 import { getAllInvoices, Invoice } from "../../utils/soroban";
 import AmountHistogram from "../../components/charts/AmountHistogram";
+import FundingChart from "../../components/charts/FundingChart";
 import { ExportButton } from "../../components/ExportButton";
 
 // ─── Metadata (static export — works for server components; kept here for
@@ -291,25 +282,7 @@ function SectionHeading({
   );
 }
 
-/** Custom tooltip for recharts */
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  valueFormatter,
-}: TooltipProps<number, string> & { valueFormatter: (v: number) => string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 shadow-xl">
-      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-        {label}
-      </p>
-      <p className="text-base font-bold text-on-surface">
-        {valueFormatter(payload[0].value as number)}
-      </p>
-    </div>
-  );
-}
+// ─── Shared chart axis / grid styles ─────────────────────────────────────────
 
 /** Spinner used during initial load */
 function Spinner() {
@@ -342,21 +315,6 @@ function ErrorState({ message }: { message: string }) {
     </div>
   );
 }
-
-// ─── Shared chart axis / grid styles ─────────────────────────────────────────
-
-const CHART_TICK_STYLE = {
-  fill: "var(--color-on-surface-variant, #94a3b8)",
-  fontSize: 11,
-  fontFamily: "var(--font-body)",
-};
-const GRID_STROKE = "var(--color-outline-variant, #334155)";
-const AREA_STROKE = "var(--color-primary, #81a6c6)";
-// Stop 0 = opaque, Stop 1 = transparent (area fill gradient)
-const GRADIENT_ID_1 = "areaGrad1";
-const GRADIENT_ID_2 = "areaGrad2";
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
   const { data, loadState, errorMessage, lastUpdated, refresh } =
@@ -520,7 +478,7 @@ export default function AnalyticsPage() {
             className="mt-14"
           >
             <SectionHeading>
-              <span id="charts-heading">Last 30 Days</span>
+              <span id="charts-heading">Funding Activity</span>
               <span className="text-xs font-semibold text-on-surface-variant">
                 Indexed{" "}
                 {new Date(indexed_at).toLocaleDateString("en-US", {
@@ -531,174 +489,7 @@ export default function AnalyticsPage() {
               </span>
             </SectionHeading>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-              {/* Chart 1: Invoices funded per day */}
-              <div
-                id="chart-invoices-funded"
-                className="rounded-[20px] border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm"
-              >
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-                  Invoices funded
-                </p>
-                <p className="mb-5 font-headline text-2xl font-bold text-on-surface">
-                  Per day
-                </p>
-
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart
-                    data={daily}
-                    margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id={GRADIENT_ID_1}
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor={AREA_STROKE}
-                          stopOpacity={0.35}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor={AREA_STROKE}
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={GRID_STROKE}
-                      strokeOpacity={0.3}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={CHART_TICK_STYLE}
-                      tickLine={false}
-                      axisLine={false}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={CHART_TICK_STYLE}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      content={
-                        <ChartTooltip
-                          valueFormatter={(v) => `${v} invoice${v !== 1 ? "s" : ""}`}
-                        />
-                      }
-                      cursor={{
-                        stroke: AREA_STROKE,
-                        strokeOpacity: 0.3,
-                        strokeWidth: 1,
-                        strokeDasharray: "4 2",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="invoices_funded"
-                      name="Invoices funded"
-                      stroke={AREA_STROKE}
-                      strokeWidth={2}
-                      fill={`url(#${GRADIENT_ID_1})`}
-                      dot={false}
-                      activeDot={{ r: 4, fill: AREA_STROKE, strokeWidth: 0 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Chart 2: USDC volume funded per day */}
-              <div
-                id="chart-usdc-volume"
-                className="rounded-[20px] border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm"
-              >
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-                  USDC volume funded
-                </p>
-                <p className="mb-5 font-headline text-2xl font-bold text-on-surface">
-                  Per day
-                </p>
-
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart
-                    data={daily}
-                    margin={{ top: 4, right: 4, left: -8, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id={GRADIENT_ID_2}
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor={AREA_STROKE}
-                          stopOpacity={0.35}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor={AREA_STROKE}
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={GRID_STROKE}
-                      strokeOpacity={0.3}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={CHART_TICK_STYLE}
-                      tickLine={false}
-                      axisLine={false}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={CHART_TICK_STYLE}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v: number) => formatUsdc(v).replace("$", "")}
-                    />
-                    <Tooltip
-                      content={
-                        <ChartTooltip
-                          valueFormatter={(v) => formatUsdc(v)}
-                        />
-                      }
-                      cursor={{
-                        stroke: AREA_STROKE,
-                        strokeOpacity: 0.3,
-                        strokeWidth: 1,
-                        strokeDasharray: "4 2",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="usdc_volume"
-                      name="USDC volume"
-                      stroke={AREA_STROKE}
-                      strokeWidth={2}
-                      fill={`url(#${GRADIENT_ID_2})`}
-                      dot={false}
-                      activeDot={{ r: 4, fill: AREA_STROKE, strokeWidth: 0 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <FundingChart />
           </section>
 
           {/* ── Invoice Size Distribution ───────────────────────────────── */}
