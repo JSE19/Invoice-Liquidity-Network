@@ -38,7 +38,9 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  } as MediaQueryList));
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  } as unknown as MediaQueryList));
 });
 
 afterEach(() => {
@@ -132,7 +134,9 @@ describe("AnimatedNumber", () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
-    } as MediaQueryList));
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    } as unknown as MediaQueryList));
 
     render(<AnimatedNumber value={100} duration={1000} />);
 

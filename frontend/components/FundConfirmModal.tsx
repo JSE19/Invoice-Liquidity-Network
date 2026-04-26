@@ -6,11 +6,11 @@ import { useApprovedTokens } from "../hooks/useApprovedTokens";
 import {
   buildApproveTokenTransaction,
   getTokenAllowance,
-  fundInvoice,
   Invoice,
   submitSignedTransaction,
 } from "../utils/soroban";
 import { formatTokenAmount, formatDate, calculateYield } from "../utils/format";
+import { useFundInvoice } from "../hooks/useInvoices";
 
 type FundingStep = "approve" | "fund";
 
@@ -25,7 +25,7 @@ export default function FundConfirmModal({ invoice, onClose, onSuccess }: FundCo
   const { addToast, updateToast } = useToast();
   const { tokens, tokenMap, defaultToken } = useApprovedTokens();
   
-  const [isFunding, setIsFunding] = useState(false);
+  const { mutate: fund, isPending: isFunding } = useFundInvoice();
   const [isApproving, setIsApproving] = useState(false);
   const [isCheckingAllowance, setIsCheckingAllowance] = useState(true);
   const [allowance, setAllowance] = useState<bigint | null>(null);
@@ -102,31 +102,14 @@ export default function FundConfirmModal({ invoice, onClose, onSuccess }: FundCo
 
   const confirmFunding = async () => {
     if (!address) return;
-    setIsFunding(true);
-    setFundingError(null);
-    const toastId = addToast({ type: "pending", title: "Funding Invoice..." });
-
-    try {
-      const tx = await fundInvoice(address, invoice.id);
-      const result = await submitSignedTransaction({ tx, signTx });
-
-      updateToast(toastId, {
-        type: "success",
-        title: "Funded Successfully",
-        txHash: result.txHash,
-      });
-      onSuccess();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An unknown error occurred";
-      setFundingError(message);
-      updateToast(toastId, {
-        type: "error",
-        title: "Funding Failed",
-        message,
-      });
-    } finally {
-      setIsFunding(false);
-    }
+    fund(invoice.id, {
+      onSuccess: () => {
+        onSuccess();
+      },
+      onError: (err) => {
+        setFundingError(err instanceof Error ? err.message : "An unknown error occurred");
+      }
+    });
   };
 
   const tokenSymbol = selectedInvoiceToken?.symbol ?? "USDC";

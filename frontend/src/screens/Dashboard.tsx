@@ -11,32 +11,17 @@ import { CONTRACT_ID, NETWORK_NAME } from "../../constants";
 import { useWallet } from "../../context/WalletContext";
 import { useToast } from "../../context/ToastContext";
 import { formatAddress, formatDate, formatUSDC } from "../../utils/format";
-import { getAllInvoices, type Invoice } from "../../utils/soroban";
+import { type Invoice } from "../../utils/soroban";
+import { useInvoices } from "../../hooks/useInvoices";
+import InvoiceStatusBadge from "../../components/InvoiceStatusBadge";
+import LastUpdated from "../../components/LastUpdated";
 
-const REFRESH_INTERVAL_MS = 30_000;
 const STELLAR_EXPERT_CONTRACT_URL = `https://stellar.expert/explorer/${NETWORK_NAME.toLowerCase()}/contract/${CONTRACT_ID}`;
 
 export type FreelancerStatusFilter = "All" | "Pending" | "Funded" | "Paid" | "Defaulted" | "Cancelled";
 export type FreelancerSortKey = "amount" | "due_date";
 export type SortOrder = "asc" | "desc";
 export type ViewMode = "table" | "timeline";
-
-export function getStatusBadgeClass(status: string): string {
-  switch (status) {
-    case "Pending":
-      return "bg-slate-100 text-slate-700";
-    case "Funded":
-      return "bg-blue-100 text-blue-700";
-    case "Paid":
-      return "bg-green-100 text-green-700";
-    case "Defaulted":
-      return "bg-red-100 text-red-700";
-    case "Cancelled":
-      return "bg-yellow-100 text-yellow-700";
-    default:
-      return "bg-slate-100 text-slate-700";
-  }
-}
 
 export function applyFreelancerFiltersAndSort(
   invoices: Invoice[],
@@ -59,20 +44,12 @@ export function applyFreelancerFiltersAndSort(
   });
 }
 
-export function InvoiceStatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${getStatusBadgeClass(status)}`}>
-      {status}
-    </span>
-  );
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { addToast } = useToast();
   const { address, connect, isConnected } = useWallet();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: allInvoices = [], isLoading: loading, dataUpdatedAt, refetch } = useInvoices();
+  
   const [copiedPayer, setCopiedPayer] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<FreelancerStatusFilter>("All");
   const [sortKey, setSortKey] = useState<FreelancerSortKey>("due_date");
@@ -94,34 +71,14 @@ export default function DashboardPage() {
     localStorage.setItem("freelancer_view_mode", mode);
   };
 
-  const fetchInvoices = useCallback(async () => {
-    if (!address) return;
-    setLoading(true);
-    try {
-      const allInvoices = await getAllInvoices();
-      setInvoices(allInvoices.filter((invoice) => invoice.freelancer === address));
-    } catch (error) {
-      console.error("Failed to fetch freelancer invoices", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [address]);
-
-  useEffect(() => {
-    void fetchInvoices();
-  }, [fetchInvoices]);
-
-  useEffect(() => {
-    if (!address) return;
-    const interval = setInterval(() => {
-      void fetchInvoices();
-    }, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [address, fetchInvoices]);
+  const myInvoices = useMemo(() => 
+    allInvoices.filter((invoice) => invoice.freelancer === address),
+    [allInvoices, address]
+  );
 
   const displayedInvoices = useMemo(
-    () => applyFreelancerFiltersAndSort(invoices, statusFilter, sortKey, sortOrder),
-    [invoices, statusFilter, sortKey, sortOrder],
+    () => applyFreelancerFiltersAndSort(myInvoices, statusFilter, sortKey, sortOrder),
+    [myInvoices, statusFilter, sortKey, sortOrder],
   );
 
   const onSort = (nextSortKey: FreelancerSortKey) => {
@@ -221,7 +178,7 @@ export default function DashboardPage() {
               </div>
 
               <button
-                onClick={() => void fetchInvoices()}
+                onClick={() => void refetch()}
                 disabled={loading}
                 className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/30 px-4 py-2.5 text-sm font-medium text-on-surface-variant disabled:opacity-50"
               >
@@ -234,28 +191,30 @@ export default function DashboardPage() {
 
       <section className="px-6 md:px-8 py-6">
         <div className="max-w-7xl mx-auto space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
-            <div className="flex items-center gap-2">
-              <label htmlFor="status-filter" className="text-sm font-medium text-on-surface-variant">
-                Status
-              </label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as FreelancerStatusFilter)}
-                className="rounded-lg border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-sm"
-              >
-                <option value="All">All</option>
-                <option value="Pending">Pending</option>
-                <option value="Funded">Funded</option>
-                <option value="Paid">Paid</option>
-                <option value="Defaulted">Defaulted</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <label htmlFor="status-filter" className="text-sm font-medium text-on-surface-variant">
+                  Status
+                </label>
+                <select
+                  id="status-filter"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as FreelancerStatusFilter)}
+                  className="rounded-lg border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-sm"
+                >
+                  <option value="All">All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Funded">Funded</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Defaulted">Defaulted</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              <p className="text-xs text-on-surface-variant">
+                Auto-refreshes active invoices.
+              </p>
             </div>
-            <p className="text-xs text-on-surface-variant">
-              Auto-refreshes every 30 seconds.
-            </p>
           </div>
 
           {viewMode === "table" ? (
@@ -289,7 +248,7 @@ export default function DashboardPage() {
                         Connect your wallet to view submitted invoices.
                       </td>
                     </tr>
-                  ) : loading && invoices.length === 0 ? (
+                  ) : loading && myInvoices.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-14 text-center text-on-surface-variant">
                         Loading invoices...
@@ -379,6 +338,9 @@ export default function DashboardPage() {
                   )}
                 </tbody>
               </table>
+              <div className="flex justify-end border-t border-outline-variant/10 bg-surface-container-low/30">
+                <LastUpdated updatedAt={dataUpdatedAt} />
+              </div>
             </div>
           ) : (
             <InvoiceTimeline invoices={displayedInvoices} loading={loading} />

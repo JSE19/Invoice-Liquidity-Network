@@ -243,7 +243,7 @@ export default function FundingChart() {
                 tick={CHART_TICK_STYLE}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : v)}
+                tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : v.toString())}
               />
               <Tooltip content={<ChartTooltip />} />
               

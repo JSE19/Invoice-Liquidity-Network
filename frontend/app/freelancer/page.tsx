@@ -23,7 +23,7 @@ import { RPC_URL, NETWORK_PASSPHRASE } from "../../constants";
 import SkeletonRow, { FREELANCER_COLUMNS } from "../../components/SkeletonRow";
 import { ExportButton } from "../../components/ExportButton";
 import { EmptyState } from "../../components/EmptyState";
-import { FreelancerEmptyIllustration } from "../../components/illustrations/EmptyIllustrations";
+import { useTranslation } from "react-i18next";
 
 const server = new rpc.Server(RPC_URL);
 
@@ -162,7 +162,7 @@ export default function FreelancerPage() {
       const dueDateUnix = Math.floor(new Date(form.dueDate).getTime() / 1000);
       const discountBps = Math.round(parseFloat(form.discountRate) * 100);
 
-      const tx = await submitInvoice({
+      const { tx } = await submitInvoice({
         freelancer: address!,
         payer: form.payer.trim(),
         amount: amountStroops,

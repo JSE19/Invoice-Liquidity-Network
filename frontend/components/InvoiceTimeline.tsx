@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Invoice } from "../utils/soroban";
 import { formatAddress, formatDate, formatUSDC } from "../utils/format";
-import { getStatusBadgeClass, InvoiceStatusBadge } from "../src/screens/Dashboard";
+import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import Link from "next/link";
 
 interface InvoiceTimelineProps {

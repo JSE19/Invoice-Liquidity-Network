@@ -9,7 +9,6 @@ import {
   Operation,
   Account,
   BASE_FEE,
-  Transaction,
 } from "@stellar/stellar-sdk";
 import {
   CONTRACT_ID,
@@ -472,13 +471,6 @@ export async function submitInvoice(
 
   const finalTx = rpc.assembleTransaction(tx, sim).build();
   return { tx: finalTx as any, invoiceId };
-}
-
-    throw new Error(`Simulation failed: ${sim.error}`);
-  }
-
-  const finalTx = rpc.assembleTransaction(tx, sim).build();
-  return finalTx;
 }
 
 export async function submitInvoiceTransaction({

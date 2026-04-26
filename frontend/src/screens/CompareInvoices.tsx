@@ -118,8 +118,8 @@ export default function CompareInvoicesScreen() {
   const comparisonSummary = useMemo(() => {
     if (stats.length < 2) return "";
     
-    const sortedByApy = [...stats].sort((a, b) => b.apy - a.apy);
-    const sortedByRisk = [...stats].sort((a, b) => b.score - a.score);
+    const sortedByApy = [...stats].sort((a, b) => ((b.apy as any) || 0) - ((a.apy as any) || 0));
+    const sortedByRisk = [...stats].sort((a, b) => ((b.score as any) || 0) - ((a.score as any) || 0));
     
     const bestApy = sortedByApy[0];
     const bestRisk = sortedByRisk[0];
