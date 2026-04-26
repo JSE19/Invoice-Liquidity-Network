@@ -12,6 +12,7 @@ import { useWallet } from "../../context/WalletContext";
 import { getInvoice, type Invoice } from "../../utils/soroban";
 import { formatAddress, formatDate, formatUSDC } from "../../utils/format";
 import { TESTNET_USDC_TOKEN_ID } from "../../constants";
+import { useApprovedTokens } from "../../hooks/useApprovedTokens";
 
 interface InvoiceDetailPageProps {
   id: string;
@@ -24,6 +25,7 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const { tokens, tokenMap, defaultToken } = useApprovedTokens();
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -97,7 +99,7 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                         payer: invoice.payer,
                         amount: (Number(invoice.amount) / 10_000_000).toString(),
                         discount: (invoice.discount_rate / 100).toString(),
-                        token: invoice.tokenId || "",
+                        token: invoice.token || "",
                       }
                     }}
                     className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-surface-container-lowest shadow-lg hover:bg-primary/90 transition-all active:scale-[0.98]"
@@ -126,9 +128,9 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
             </div>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-3 mb-12">
             <div className="md:col-span-2 space-y-6">
-              <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm">
+              <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm text-on-surface">
                 <h3 className="text-lg font-bold mb-6">Financial Overview</h3>
                 <div className="grid grid-cols-2 gap-8">
                   <div>
@@ -145,12 +147,16 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Settlement Asset</p>
-                    <p className="text-lg font-mono font-bold text-primary">USDC</p>
+                    <p className="text-lg font-mono font-bold text-primary">
+                      {invoice.token && tokenMap.has(invoice.token) 
+                        ? tokenMap.get(invoice.token)?.symbol 
+                        : "USDC"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm">
+              <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm text-on-surface">
                 <h3 className="text-lg font-bold mb-6">Wallet Participants</h3>
                 <div className="space-y-4">
                   <div>
@@ -163,10 +169,12 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                   </div>
                 </div>
               </div>
+            </div>
 
+            <aside className="space-y-6">
               {/* Share on X — visible only for Paid invoices (freelancer or LP) */}
               {invoice.status === "Paid" && (
-                <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm">
+                <div className="rounded-[32px] border border-outline-variant/15 bg-white p-8 shadow-sm text-on-surface">
                   <h3 className="text-lg font-bold mb-4">Celebrate this win</h3>
                   <ShareButton
                     invoice={invoice}
@@ -174,12 +182,26 @@ export default function InvoiceDetailPage({ id }: InvoiceDetailPageProps) {
                   />
                 </div>
               )}
-            </div>
-
-            <div className="space-y-6">
-              <ActivityFeed invoiceId={invoice.id} />
-            </div>
+              
+              <div className="rounded-[32px] border border-outline-variant/15 bg-primary/5 p-8 shadow-sm text-on-surface">
+                <h3 className="text-lg font-bold mb-4 text-primary">Need Help?</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed">
+                  If you notice any discrepancies or need to raise a dispute, please visit our documentation or contact support.
+                </p>
+                <Link href="/faq" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                  View FAQs <span className="material-symbols-outlined text-sm">open_in_new</span>
+                </Link>
+              </div>
+            </aside>
           </div>
+
+          <section id="activity-log" className="mt-16">
+            <div className="flex items-center gap-4 mb-8">
+              <h2 className="text-2xl font-headline">Invoice Activity Log</h2>
+              <div className="h-px flex-1 bg-outline-variant/20" />
+            </div>
+            <ActivityFeed invoiceId={invoice.id} />
+          </section>
         </div>
       </section>
 
