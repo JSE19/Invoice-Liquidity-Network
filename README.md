@@ -153,6 +153,22 @@ E2E testing is fully integrated into GitHub Actions, but skipped by default to s
 
 ---
 
+## Load Testing
+
+We use k6 to perform load testing on the indexer API to ensure performance under stress.
+
+### Prerequisites
+Install k6 following the official installation guide.
+
+### Running Load Tests
+The load test script targets the indexer API. You can specify the base URL via an environment variable.
+
+```bash
+BASE_URL=http://localhost:8080 k6 run tests/load/indexer.js
+```
+
+---
+
 ## Repository Structure
 
 ```

@@ -31,3 +31,6 @@ fix.md
 # Build outputs
 dist/
 build/
+
+# Load test results
+tests/load/results/
