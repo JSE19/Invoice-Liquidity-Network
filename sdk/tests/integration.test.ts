@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   Account,
-  Address,
   BASE_FEE,
   nativeToScVal,
   rpc,
@@ -15,7 +14,6 @@ import { ILNSdk } from "../src/client";
 import { ILN_TESTNET, createKeypairSigner } from "../src/signers";
 
 const READ_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
-const POLL_ATTEMPTS = 30;
 const TX_TIMEOUT_SECONDS = 60;
 const INVOICE_AMOUNT = 10_000_000n;
 const DISCOUNT_RATE = 300;
@@ -26,7 +24,6 @@ const PAYER_SECRET = process.env.PAYER_SECRET;
 const FUNDER_SECRET = process.env.FUNDER_SECRET;
 const hasRequiredSecrets = Boolean(FREELANCER_SECRET && PAYER_SECRET && FUNDER_SECRET);
 
-type PreparedTransactionLike = { toXDR(): string };
 type SimulationResultLike = {
   error?: unknown;
   result?: {
@@ -38,59 +35,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
-}
-
-async function submitWithSigner(
-  signerSecret: string,
-  sourceAddress: string,
-  method: string,
-  args: xdr.ScVal[],
-): Promise<void> {
-  const signer = createKeypairSigner(signerSecret);
-  const server = new rpc.Server(ILN_TESTNET.rpcUrl);
-  const sourceAccount = (await server.getAccount(sourceAddress)) as Account;
-
-  const tx = new TransactionBuilder(sourceAccount, {
-    fee: BASE_FEE,
-    networkPassphrase: ILN_TESTNET.networkPassphrase,
-  })
-    .addOperation(
-      Operation.invokeContractFunction({
-        contract: ILN_TESTNET.contractId,
-        function: method,
-        args,
-      }),
-    )
-    .setTimeout(TX_TIMEOUT_SECONDS)
-    .build();
-
-  const prepared = (await server.prepareTransaction(tx)) as PreparedTransactionLike;
-  const signedXdr = await signer.signTransaction(prepared.toXDR(), {
-    address: sourceAddress,
-    networkPassphrase: ILN_TESTNET.networkPassphrase,
-  });
-  const signedTx = TransactionBuilder.fromXDR(signedXdr, ILN_TESTNET.networkPassphrase);
-  const submitted = (await server.sendTransaction(signedTx)) as {
-    hash?: string;
-    status?: string;
-    errorResultXdr?: string;
-  };
-
-  if (!submitted.hash || !submitted.status) {
-    throw new Error("RPC server returned an invalid sendTransaction response.");
-  }
-  if (submitted.status !== "PENDING" && submitted.status !== "DUPLICATE") {
-    throw new Error(
-      `Transaction submission failed with status ${submitted.status}. ${submitted.errorResultXdr ?? ""}`.trim(),
-    );
-  }
-
-  const finalStatus = (await server.pollTransaction(submitted.hash, {
-    attempts: POLL_ATTEMPTS,
-  })) as { status?: string };
-  if (finalStatus.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-    throw new Error(`Transaction did not succeed. Final status: ${String(finalStatus.status)}.`);
-  }
 }
 
 async function readContract(method: string, args: xdr.ScVal[]): Promise<unknown> {
@@ -200,10 +144,10 @@ describe.skipIf(!hasRequiredSecrets)("SDK testnet integration", () => {
     const secondsUntilDue = Math.max(0, dueDate - Math.floor(Date.now() / 1000));
     await sleep((secondsUntilDue + DEFAULT_WAIT_BUFFER_SECONDS) * 1000);
 
-    await submitWithSigner(FUNDER_SECRET!, funder, "claim_default", [
-      Address.fromString(funder).toScVal(),
-      nativeToScVal(invoiceId, { type: "u64" }),
-    ]);
+    await funderSdk.claimDefault({
+      funder,
+      invoiceId,
+    });
 
     const invoice = await freelancerSdk.getInvoice(invoiceId);
     expect(invoice.status).toBe("Defaulted");

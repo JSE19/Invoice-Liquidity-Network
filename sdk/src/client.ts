@@ -11,6 +11,7 @@ import {
 } from "@stellar/stellar-sdk";
 
 import type {
+  ClaimDefaultParams,
   FundInvoiceParams,
   ILNSdkConfig,
   Invoice,
@@ -93,6 +94,22 @@ export class ILNSdk {
     const preparedTransaction = await this.prepareTransaction(transaction);
 
     await this.signAndSend(preparedTransaction, payer);
+  }
+
+  async claimDefault(params: ClaimDefaultParams): Promise<void> {
+    const signerAddress = await this.requireSignerAddress();
+
+    if (signerAddress !== params.funder) {
+      throw new Error("claimDefault must be signed by the funder address.");
+    }
+
+    const transaction = await this.buildWriteTransaction(params.funder, "claim_default", [
+      this.toAddress(params.funder),
+      nativeToScVal(params.invoiceId, { type: "u64" }),
+    ]);
+    const preparedTransaction = await this.prepareTransaction(transaction);
+
+    await this.signAndSend(preparedTransaction, params.funder);
   }
 
   async getInvoice(invoiceId: bigint): Promise<Invoice> {

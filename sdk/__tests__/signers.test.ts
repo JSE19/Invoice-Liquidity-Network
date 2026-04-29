@@ -74,7 +74,10 @@ describe("createFreighterSigner", () => {
   });
 
   it("throws when Freighter returns an error on connection check", async () => {
-    vi.mocked(freighterApi.isConnected).mockResolvedValue({ error: "Connection error" });
+    vi.mocked(freighterApi.isConnected).mockResolvedValue({
+      error: "Connection error",
+      isConnected: false,
+    });
     const signer = createFreighterSigner();
     await expect(signer.getPublicKey()).rejects.toThrow("Connection error");
   });
@@ -86,28 +89,43 @@ describe("createFreighterSigner", () => {
   });
 
   it("throws when getAddress returns an error", async () => {
-    vi.mocked(freighterApi.getAddress).mockResolvedValue({ error: "Address error" });
+    vi.mocked(freighterApi.getAddress).mockResolvedValue({
+      address: "",
+      error: "Address error",
+    });
     const signer = createFreighterSigner();
     await expect(signer.getPublicKey()).rejects.toThrow("Address error");
   });
 
   it("throws when requestAccess returns an error", async () => {
     vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "" });
-    vi.mocked(freighterApi.requestAccess).mockResolvedValue({ error: "Request error" });
+    vi.mocked(freighterApi.requestAccess).mockResolvedValue({
+      address: "",
+      error: "Request error",
+    });
     const signer = createFreighterSigner();
     await expect(signer.getPublicKey()).rejects.toThrow("Request error");
   });
 
   it("throws when getNetworkDetails returns an error", async () => {
     vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "G123" });
-    vi.mocked(freighterApi.getNetworkDetails).mockResolvedValue({ error: "Network error" });
+    vi.mocked(freighterApi.getNetworkDetails).mockResolvedValue({
+      error: "Network error",
+      network: "",
+      networkPassphrase: "",
+      networkUrl: "",
+    });
     const signer = createFreighterSigner();
     await expect(signer.signTransaction("unsigned-xdr", { networkPassphrase: "Test SDF Network ; September 2015" })).rejects.toThrow("Network error");
   });
 
   it("throws when signTransaction returns an error", async () => {
     vi.mocked(freighterApi.getAddress).mockResolvedValue({ address: "G123" });
-    vi.mocked(freighterApi.signTransaction).mockResolvedValue({ error: "Sign error" });
+    vi.mocked(freighterApi.signTransaction).mockResolvedValue({
+      error: "Sign error",
+      signedTxXdr: "",
+      signerAddress: "",
+    });
     const signer = createFreighterSigner();
     await expect(signer.signTransaction("unsigned-xdr", { networkPassphrase: "Test SDF Network ; September 2015" })).rejects.toThrow("Sign error");
   });

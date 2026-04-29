@@ -262,6 +262,52 @@ describe("ILNSdk", () => {
     expect(server.sendTransaction).toHaveBeenCalledTimes(1);
   });
 
+  it("claims a defaulted invoice with the funder signer", async () => {
+    const funderKeypair = Keypair.random();
+    const signer = createKeypairSigner(funderKeypair.secret());
+    const server = {
+      getAccount: vi.fn().mockResolvedValue(new Account(funderKeypair.publicKey(), "2")),
+      prepareTransaction: vi.fn().mockImplementation(async (transaction) => transaction),
+      sendTransaction: vi.fn().mockResolvedValue({
+        hash: "d".repeat(64),
+        status: "PENDING",
+      }),
+      pollTransaction: vi.fn().mockResolvedValue({
+        status: rpc.Api.GetTransactionStatus.SUCCESS,
+      }),
+      simulateTransaction: vi.fn(),
+    } satisfies RpcServerLike;
+
+    const sdk = createSdk(server, signer);
+    await sdk.claimDefault({
+      funder: funderKeypair.publicKey(),
+      invoiceId: 5n,
+    });
+
+    expect(server.getAccount).toHaveBeenCalledWith(funderKeypair.publicKey());
+    expect(server.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects claimDefault when the provided funder does not match the signer", async () => {
+    const signer = createKeypairSigner(Keypair.random().secret());
+    const server = {
+      getAccount: vi.fn(),
+      prepareTransaction: vi.fn(),
+      sendTransaction: vi.fn(),
+      pollTransaction: vi.fn(),
+      simulateTransaction: vi.fn(),
+    } satisfies RpcServerLike;
+
+    const sdk = createSdk(server, signer);
+
+    await expect(
+      sdk.claimDefault({
+        funder: Keypair.random().publicKey(),
+        invoiceId: 5n,
+      }),
+    ).rejects.toThrow("claimDefault must be signed by the funder address.");
+  });
+
   it("throws when prepareTransaction fails", async () => {
     const payerKeypair = Keypair.random();
     const signer = createKeypairSigner(payerKeypair.secret());

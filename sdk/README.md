@@ -75,6 +75,11 @@ markPaid(params: {
   invoiceId: bigint;
 }): Promise<void>;
 
+claimDefault(params: {
+  funder: string;
+  invoiceId: bigint;
+}): Promise<void>;
+
 getInvoice(invoiceId: bigint): Promise<Invoice>;
 ```
 

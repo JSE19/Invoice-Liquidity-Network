@@ -25,6 +25,11 @@ export interface FundInvoiceParams {
   invoiceId: bigint;
 }
 
+export interface ClaimDefaultParams {
+  funder: string;
+  invoiceId: bigint;
+}
+
 export interface MarkPaidParams {
   invoiceId: bigint;
 }
