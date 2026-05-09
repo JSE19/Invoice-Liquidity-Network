@@ -382,11 +382,13 @@ fn update_invoice_rejects_wrong_signer() {
     let impostor = Address::generate(&t.env);
 
     set_update_invoice_auth(&t, &impostor, invoice_id);
-    let result = t.env.try_invoke_contract::<Result<(), ContractError>, Error>(
-        &t.contract_id,
-        &Symbol::new(&t.env, "update_invoice"),
-        update_invoice_args_for_signer(&t, invoice_id, &impostor),
-    );
+    let result = t
+        .env
+        .try_invoke_contract::<Result<(), ContractError>, Error>(
+            &t.contract_id,
+            &Symbol::new(&t.env, "update_invoice"),
+            update_invoice_args_for_signer(&t, invoice_id, &impostor),
+        );
     let expected_error: Error = ContractError::Unauthorized.into();
 
     assert_eq!(result, Err(Ok(expected_error)));

@@ -392,9 +392,13 @@ fn test_update_invoice_rejects_non_freelancer() {
     let impostor = Address::generate(&t.env);
     let updated_due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET * 2;
 
-    let result =
-        t.contract
-            .try_update_invoice(&impostor, &id, &INVOICE_AMOUNT, &updated_due_date, &DISCOUNT_RATE);
+    let result = t.contract.try_update_invoice(
+        &impostor,
+        &id,
+        &INVOICE_AMOUNT,
+        &updated_due_date,
+        &DISCOUNT_RATE,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::Unauthorized)));
 }
@@ -407,9 +411,13 @@ fn test_update_funded_invoice_fails() {
 
     t.contract.fund_invoice(&t.funder, &id, &INVOICE_AMOUNT);
 
-    let result =
-        t.contract
-            .try_update_invoice(&t.freelancer, &id, &INVOICE_AMOUNT, &updated_due_date, &DISCOUNT_RATE);
+    let result = t.contract.try_update_invoice(
+        &t.freelancer,
+        &id,
+        &INVOICE_AMOUNT,
+        &updated_due_date,
+        &DISCOUNT_RATE,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::AlreadyFunded)));
 }
@@ -420,9 +428,9 @@ fn test_update_invoice_rejects_invalid_amount() {
     let id = submit_standard_invoice(&t);
     let updated_due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET * 2;
 
-    let result = t
-        .contract
-        .try_update_invoice(&t.freelancer, &id, &0, &updated_due_date, &DISCOUNT_RATE);
+    let result =
+        t.contract
+            .try_update_invoice(&t.freelancer, &id, &0, &updated_due_date, &DISCOUNT_RATE);
 
     assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
 }
@@ -433,9 +441,13 @@ fn test_update_invoice_rejects_invalid_due_date() {
     let id = submit_standard_invoice(&t);
     let past_due_date = t.env.ledger().timestamp();
 
-    let result =
-        t.contract
-            .try_update_invoice(&t.freelancer, &id, &INVOICE_AMOUNT, &past_due_date, &DISCOUNT_RATE);
+    let result = t.contract.try_update_invoice(
+        &t.freelancer,
+        &id,
+        &INVOICE_AMOUNT,
+        &past_due_date,
+        &DISCOUNT_RATE,
+    );
 
     assert_eq!(result, Err(Ok(ContractError::InvalidDueDate)));
 }
@@ -446,9 +458,9 @@ fn test_update_invoice_rejects_invalid_discount_rate() {
     let id = submit_standard_invoice(&t);
     let updated_due_date = t.env.ledger().timestamp() + DUE_DATE_OFFSET * 2;
 
-    let result = t
-        .contract
-        .try_update_invoice(&t.freelancer, &id, &INVOICE_AMOUNT, &updated_due_date, &0);
+    let result =
+        t.contract
+            .try_update_invoice(&t.freelancer, &id, &INVOICE_AMOUNT, &updated_due_date, &0);
 
     assert_eq!(result, Err(Ok(ContractError::InvalidDiscountRate)));
 }
