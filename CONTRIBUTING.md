@@ -109,6 +109,27 @@ cargo test
 
 All tests must pass before you open a PR. If you are adding new functionality, include tests for it.
 
+### SDK type generation
+
+The SDK exposes TypeScript types that are generated from the Soroban contract spec JSON. The generated file lives at `sdk/src/generated/types.ts` and is committed to the repo so SDK consumers do not need to run the generator.
+
+**When to regenerate:** any time the smart contract structs, enums, or errors change.
+
+**How to regenerate:**
+
+```bash
+# 1. Build the contract and export its spec
+cd ILN-Smart-Contract
+stellar contract build
+stellar contract info --wasm target/wasm32v1-none/release/*.wasm --output-format json > target/spec.json
+cd ..
+
+# 2. Run the generator
+pnpm generate:types
+```
+
+Commit the updated `sdk/src/generated/types.ts` alongside your contract change. CI will regenerate and fail if the committed file does not match.
+
 ### Keeping your fork up to date
 
 ```bash
