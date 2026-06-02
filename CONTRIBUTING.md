@@ -10,6 +10,7 @@ Thank you for your interest in contributing. ILN is an open-source protocol and 
 - [Applying to work on an issue](#applying-to-work-on-an-issue)
 - [Project board](#project-board)
 - [Development setup](#development-setup)
+- [CI/CD pipeline reference](#cicd-pipeline-reference)
 - [Submitting a pull request](#submitting-a-pull-request)
 - [Branch protection](#branch-protection)
 - [Code standards](#code-standards)
@@ -168,6 +169,14 @@ git fetch upstream
 git checkout main
 git merge upstream/main
 ```
+
+---
+
+## CI/CD pipeline reference
+
+The repository's GitHub Actions workflows are documented in [docs/ci-cd.md](./docs/ci-cd.md). That reference explains what each workflow does, what secrets it needs, how long it usually takes, and how to debug failures.
+
+Use it before pushing changes so you can match the relevant CI checks locally.
 
 ---
 
