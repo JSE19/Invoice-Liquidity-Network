@@ -7,6 +7,13 @@ import { ILNClient } from "./client";
 import { loadConfig } from "./config";
 import { parseDueDate } from "./dates";
 import { formatUnknownError } from "./errors";
+import {
+  createUi,
+  describeConfig,
+  formatInvoiceDetails,
+  formatInvoiceList,
+  formatProtocolConfig,
+} from "./format";
 import { registerInspectCommand } from "./inspect";
 import { createKeypairFileSigner } from "./signer";
 import { TestnetAccountSeeder } from "./dev-seed";
@@ -127,6 +134,15 @@ export async function runCli(
       const client = createClient(load());
       const invoices = await client.listInvoicesByAddress(options.address);
       ui.info(formatInvoiceList(invoices));
+    });
+
+  program
+    .command("config")
+    .description("Show live protocol configuration from the ILN contract.")
+    .action(async () => {
+      const client = createClient(load());
+      const config = await client.getProtocolConfig();
+      ui.info(formatProtocolConfig(config));
     });
 
   // Development commands
