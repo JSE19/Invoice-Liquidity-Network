@@ -11,6 +11,7 @@ Thank you for your interest in contributing. ILN is an open-source protocol and 
 - [Development setup](#development-setup)
 - [Submitting a pull request](#submitting-a-pull-request)
 - [Code standards](#code-standards)
+- [Automated dependency updates](#automated-dependency-updates)
 - [Getting help](#getting-help)
 
 ---
@@ -173,6 +174,49 @@ Commit messages are validated automatically:
 - CI: Pull request titles are validated by a GitHub Action. The PR title is used as the squash commit message, so it must follow the same format.
 
 Example: `ci: add commitlint for conventional commit enforcement`
+
+---
+
+## Automated dependency updates
+
+This repository uses [Renovate](https://github.com/renovatebot/renovate) to keep npm, pnpm, Cargo, and GitHub Actions dependencies current. Configuration lives in [`renovate.json`](./renovate.json) at the repository root.
+
+### Behavior
+
+| Update type | Behavior |
+|-------------|----------|
+| Patch | Individual pull requests (ungrouped for safe auto-merge); merged automatically when CI passes after a short release-age window |
+| Minor, pin, digest | Grouped into a single weekly pull request (Mondays, 09:00 UTC) |
+| Major | Separate pull requests with migration notes; never auto-merged |
+| `@stellar/*` major | Requires dependency-dashboard approval and manual review |
+| Lock files | Refreshed weekly (Mondays, 09:00 UTC) |
+
+Renovate runs on weekdays between 09:00 and 10:00 UTC.
+
+### Enabling Renovate on a fork
+
+1. Install the [Mend Renovate GitHub App](https://github.com/apps/renovate) on your fork or organization.
+2. Grant access to this repository.
+3. Renovate opens an onboarding pull request; merge it to activate updates.
+
+Maintainers enable Renovate on the upstream repository the same way.
+
+### Validating configuration locally
+
+```bash
+npx --yes --package renovate renovate-config-validator renovate.json
+```
+
+Optional full dry run (requires a GitHub token with repository read access):
+
+```bash
+export RENOVATE_TOKEN="$GITHUB_TOKEN"
+npx --yes --package renovate renovate --platform=github \
+  --dry-run=full \
+  Invoice-Liquidity-Network/Invoice-Liquidity-Network
+```
+
+Review the dry-run output for expected package managers, schedules, and grouping before merging configuration changes.
 
 ---
 
