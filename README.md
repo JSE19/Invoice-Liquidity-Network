@@ -5,10 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-status.iln.finance-brightgreen)](https://status.iln.finance)
 
-**Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
+**Turn unpaid invoices into instant liquidity on-chain, on Stellar.***********
 
 
-i just need to create a draft pr
+i just need to create a draft meaninful pr
 
 # Invoice Liquidity Network (ILN)
 
