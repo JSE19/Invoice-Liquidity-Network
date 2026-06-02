@@ -1,35 +1,30 @@
 # Security Policy
 
 ## Supported Versions
-
-Only the latest release is actively supported with security updates. We recommend keeping your dependencies up to date.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| Latest  | :white_check_mark: |
-| Older   | :x:                |
+We currently support security updates for the latest major version of the Invoice Liquidity Network (ILN) protocol and its components.
 
 ## Reporting a Vulnerability
+If you discover a security vulnerability within ILN, please report it privately. **Do not disclose the vulnerability publicly until a fix has been issued.**
 
-Security is a top priority for our SDK and monorepo. We appreciate your efforts to responsibly disclose your findings.
+You can report vulnerabilities by:
+- Opening a **GitHub Security Advisory** in this repository.
+- Emailing our security team at security@invoiceliquidity.network.
 
-If you discover a security vulnerability, please do **NOT** open a public issue. Instead, report it privately:
+### What to Include in Your Report
+- A detailed description of the vulnerability.
+- Step-by-step reproduction instructions.
+- Estimated impact (e.g., how it affects users, transactions, or the protocol).
+- Any potential mitigations you suggest.
 
-1. **Email us**: Send the details to `security@example.com` (or the repository maintainers).
-2. **GitHub Security Advisories**: Alternatively, you can use the "Report a vulnerability" feature in the GitHub Security tab of this repository.
+## Response Timeline
+- **Acknowledgment:** Within 48 hours.
+- **Resolution/Fix:** Within 14 days for Critical severity bugs.
 
-### What to include in your report
+## Severity Classification
+- **Critical:** Allows draining of funds from smart contracts, bypassing authentication, or total system compromise.
+- **High:** Significant data breach, unauthorized state manipulation with limited financial impact.
+- **Medium:** Denial of service (DoS), localized data leaks.
+- **Low:** UI spoofing, minor bugs with no direct financial or data impact.
 
-- Description of the vulnerability.
-- Steps to reproduce (including code snippets, if possible).
-- The potential impact of the vulnerability.
-- Suggested mitigations (if any).
-
-### Our Process
-
-1. We will acknowledge receipt of your vulnerability report within 48 hours.
-2. We will investigate the issue and determine its severity.
-3. We will work to release a patch or mitigation as soon as possible.
-4. We will coordinate with you to publish a security advisory once the patch is available to users.
-
-Thank you for helping keep this project secure!
+## Reward Process
+Valid, critical vulnerabilities reported privately that result in a patch may be eligible for a bug bounty reward, determined on a case-by-case basis.

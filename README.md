@@ -185,6 +185,7 @@ npm run test:e2e              # Run E2E integration tests
 | [`docs/multi-token.md`](./docs/multi-token.md) | Multi-token support |
 | [`docs/notifications.md`](./docs/notifications.md) | Notification system |
 | [`docs/local-development.md`](./docs/local-development.md) | Local dev setup |
+| [`docs/ci-cd.md`](./docs/ci-cd.md) | CI/CD and deployment environments |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute |
 | [`SECURITY.md`](./SECURITY.md) | Security policy |
 
@@ -209,3 +210,7 @@ MIT — see [LICENSE](./LICENSE)
 Built on [Stellar](https://stellar.org) and [Soroban](https://soroban.stellar.org).
 
 > This project is not affiliated with Stellar Development Foundation.
+
+## Security
+
+Please refer to our [Security Policy](./SECURITY.md) for information on supported versions and how to report vulnerabilities privately.
