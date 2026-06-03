@@ -1,19 +1,22 @@
 # Documentation Index
 
-## Getting Started
+## Project Status
 
-- [Stellar & Soroban Primer](stellar-primer.md) — New to Stellar? Start here
-- [Local Development](local-development.md)
-
-## Protocol
-
-- [Governance](governance.md)
-- [Multi-Token](multi-token.md)
-- [Notifications](notifications.md)
-
-## Reference
-
+- [**Changelog** 📋](changelog.md) — Aggregated release history with component labels
 - [Analytics](analytics.md)
+- [LP Funding Tutorial](tutorials/lp-funding.md)
 - [Benchmarks](benchmarks.md)
+- [Governance](governance.md)
+
+## Development & Operations
+
+- [Local Development](local-development.md)
+- [Multi-Token Support](tokens/multi-token-support.md)
 - [Mutation Testing](mutation-testing.md)
+- [Notifications](notifications.md)
+- [CI/CD](ci-cd.md)
 - [PR Submission Form](pr-16-submission-form.md)
+
+## Tutorials
+
+- [Submit Your First Invoice](tutorials/first-invoice.md)
