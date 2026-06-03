@@ -228,3 +228,14 @@ Built on [Stellar](https://stellar.org) and [Soroban](https://soroban.stellar.or
 ## Security
 
 Please refer to our [Security Policy](./SECURITY.md) for information on supported versions and how to report vulnerabilities privately.
+
+## Documentation Site
+
+The ILN documentation is built with [Nextra](https://nextra.site) and deployed to [docs.iln.finance](https://docs.iln.finance).
+
+### Local Development
+
+```bash
+cd packages/docs
+npm install
+npm run dev
