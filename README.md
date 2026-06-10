@@ -26,9 +26,10 @@ i just need to create a draft prrr
 
 | Repository | Description | Language |
 |------------|-------------|----------|
-| [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | 🏠 **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
-| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | 🖥️ Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
-| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | ⚙️ Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
+| [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
+| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
+| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | 
+Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
 
 ---
 
