@@ -2,7 +2,8 @@
   "name": "invoice-liquidity-network",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "frontend"
   ],
   "scripts": {
     "test": "turbo run test",
@@ -27,6 +28,7 @@
     "@changesets/cli": "2.31.0",
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
+    "chromatic": "^17.4.1",
     "gitleaks-secret-scanner": "^2.1.1",
     "husky": "^8.0.0",
     "license-checker-rseidelsohn": "^5.0.1",
