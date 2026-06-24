@@ -8,7 +8,7 @@ export type NotificationTrigger =
   | "invoice_due_soon"
   | "invoice_overdue";
 
-export type SubscriptionChannel = "email" | "webhook";
+export type SubscriptionChannel = "email" | "webhook" | "sms";
 
 export interface Invoice {
   id: number;

@@ -6,6 +6,7 @@ export * from "./timeouts";
 export { ContractError } from "./generated/types";
 export * from "./notifications";
 export * from "./analytics";
+export * from "./analytics-computations";
 export * from "./compatibility";
 export * from "./federation";
 export * from "./governance";
