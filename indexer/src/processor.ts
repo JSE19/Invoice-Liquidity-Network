@@ -2,6 +2,7 @@ import { type rpc, scValToNative } from "@stellar/stellar-sdk";
 import { hasEvent, insertEvent, upsertInvoice } from "./db";
 import { invalidateInvoiceCache } from "./cache";
 import { fetchInvoice } from "./rpc";
+import { pubSub } from "./pubsub";
 import type { ILNEventType } from "./types";
 
 const KNOWN_EVENT_TYPES = new Set<ILNEventType>([
@@ -62,5 +63,10 @@ export async function processEvent(
   if (invoice) {
     upsertInvoice(invoice);
     await invalidateInvoiceCache(invoiceId);
+    if (eventType === "submitted") {
+      pubSub.publish("INVOICE_CREATED", invoice);
+    } else {
+      pubSub.publish("INVOICE_UPDATED", invoice);
+    }
   }
 }

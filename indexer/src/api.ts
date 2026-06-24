@@ -12,6 +12,7 @@ import {
   getCursorUpdatedAt,
 } from "./db";
 import { cacheGet, cacheSet } from "./cache";
+import { createGraphQLHandler } from "./graphql";
 
 /**
  * Build and return the Express application.
@@ -21,6 +22,10 @@ import { cacheGet, cacheSet } from "./cache";
 export function createApp(): express.Application {
   const app = express();
   app.use(express.json());
+
+  // ── GraphQL (queries, mutations, subscriptions via SSE + GraphiQL) ──────────
+  const yoga = createGraphQLHandler();
+  app.use(yoga.graphqlEndpoint, yoga);
 
   const startTime = Date.now();
 

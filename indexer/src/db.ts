@@ -345,7 +345,7 @@ export function getInvoiceHistory(
   return queryInvoices({ [role]: address });
 }
 
-
+export function getTopLPs(limit: number, period: string): LPStat[] {
   const now = Date.now();
   const since =
     period === "week"
@@ -392,6 +392,21 @@ export function getInvoiceHistory(
       return b.invoiceCount - a.invoiceCount;
     })
     .slice(0, limit);
+}
+
+// ─── Event queries ────────────────────────────────────────────────────────────
+
+/** Return events, optionally filtered by invoice_id. */
+export function getEvents(invoiceId?: number): ILNEvent[] {
+  const db = getDb();
+  if (invoiceId !== undefined) {
+    return db
+      .prepare("SELECT * FROM events WHERE invoice_id = ? ORDER BY ledger ASC")
+      .all(invoiceId) as ILNEvent[];
+  }
+  return db
+    .prepare("SELECT * FROM events ORDER BY ledger ASC LIMIT 1000")
+    .all() as ILNEvent[];
 }
 
 // ─── Event deduplication ──────────────────────────────────────────────────────

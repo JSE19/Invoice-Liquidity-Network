@@ -15,7 +15,9 @@ import {
   formatHistoryJson,
   formatHistoryTable,
   formatInvoiceDetails,
+  formatInvoiceDetailsJson,
   formatInvoiceList,
+  formatInvoiceListJson,
   formatProtocolConfig,
 } from "./format";
 import { registerInspectCommand } from "./inspect";
@@ -60,7 +62,8 @@ export async function runCli(
     .description("Invoice Liquidity Network CLI")
     .exitOverride()
     .showHelpAfterError()
-    .option("--json", "reserved for future machine-readable output")
+    .option("--json", "output machine-readable JSON (applies to: status, list)")
+    .option("--quiet", "suppress informational messages; show only command output")
     .hook("preAction", (_thisCommand, actionCommand) => {
       const isConfiglessXdrCommand =
         actionCommand.name() === "decode" && actionCommand.parent?.name() === "xdr";
@@ -74,7 +77,10 @@ export async function runCli(
 
       try {
         const config = load();
-        ui.info(`Using ${describeConfig(config)}`);
+        const opts = program.opts() as { quiet?: boolean };
+        if (!opts.quiet) {
+          ui.info(`Using ${describeConfig(config)}`);
+        }
       } catch (error) {
         throw error;
       }
@@ -143,7 +149,8 @@ export async function runCli(
     .action(async (options: { id: string }) => {
       const client = createClient(load());
       const invoice = await client.getInvoice(parseInvoiceId(options.id));
-      ui.info(formatInvoiceDetails(invoice));
+      const opts = program.opts() as { json?: boolean };
+      ui.info(opts.json ? formatInvoiceDetailsJson(invoice) : formatInvoiceDetails(invoice));
     });
 
   program
@@ -154,7 +161,8 @@ export async function runCli(
       assertStellarAddress(options.address, "address");
       const client = createClient(load());
       const invoices = await client.listInvoicesByAddress(options.address);
-      ui.info(formatInvoiceList(invoices));
+      const opts = program.opts() as { json?: boolean };
+      ui.info(opts.json ? formatInvoiceListJson(invoices) : formatInvoiceList(invoices));
     });
 
   program
@@ -215,8 +223,9 @@ export async function runCli(
           invoices = invoices.slice(0, limit);
         }
 
+        const globalOpts = program.opts() as { json?: boolean };
         const output =
-          options.format === "json"
+          options.format === "json" || globalOpts.json
             ? formatHistoryJson(invoices)
             : formatHistoryTable(invoices);
 
