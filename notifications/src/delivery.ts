@@ -1,8 +1,18 @@
 import { Resend } from "resend";
+import Twilio from "twilio";
 import { CONFIG } from "./config";
 import type { NotificationPayload, Subscription } from "./types";
 
 const resend = new Resend(CONFIG.resendApiKey);
+
+let twilioClient: ReturnType<typeof Twilio> | null = null;
+
+function getTwilioClient() {
+  if (!twilioClient && CONFIG.twilioAccountSid && CONFIG.twilioAuthToken) {
+    twilioClient = Twilio(CONFIG.twilioAccountSid, CONFIG.twilioAuthToken);
+  }
+  return twilioClient;
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,12 +71,41 @@ export async function sendWebhook(
   await sendWebhook(subscription, payload, attempt + 1);
 }
 
+export async function sendSms(
+  subscription: Subscription,
+  payload: NotificationPayload
+): Promise<void> {
+  const client = getTwilioClient();
+  if (!client) {
+    throw new Error("Twilio credentials not configured");
+  }
+
+  const message = [
+    payload.subject,
+    "",
+    `Invoice #${payload.invoice.id}`,
+    `Status: ${payload.invoice.status}`,
+    `Due date: ${new Date(payload.invoice.due_date * 1000).toISOString()}`,
+  ].join("\n");
+
+  await client.messages.create({
+    to: subscription.destination,
+    from: CONFIG.twilioFromNumber,
+    body: message,
+  });
+}
+
 export async function deliverNotification(
   subscription: Subscription,
   payload: NotificationPayload
 ): Promise<void> {
   if (subscription.channel === "email") {
     await sendEmail(subscription, payload);
+    return;
+  }
+
+  if (subscription.channel === "sms") {
+    await sendSms(subscription, payload);
     return;
   }
 

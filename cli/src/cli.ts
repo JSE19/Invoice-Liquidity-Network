@@ -313,10 +313,17 @@ export async function runCli(
   devCommand
     .command("seed")
     .description("Create and fund testnet accounts with USDC/EURC trustlines for development.")
-    .action(async () => {
+    .option("--scenario <type>", "seeding scenario: new-user, active-lp, disputed")
+    .option("--count <n>", "number of records to seed per scenario", "1")
+    .option("--token <symbol>", "specific token to use: USDC or EURC")
+    .action(async (options: { scenario?: string; count?: string; token?: string }) => {
       const config = load();
       const seeder = new TestnetAccountSeeder({ config, ui });
-      await seeder.seed();
+      const count = parseInt(options.count ?? "1", 10);
+      if (isNaN(count) || count <= 0) {
+        throw new Error("--count must be a positive integer");
+      }
+      await seeder.seed({ scenario: options.scenario, count, token: options.token });
     });
 
   try {

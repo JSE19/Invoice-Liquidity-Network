@@ -10,6 +10,7 @@ import {
   ALLOWED_CHANNELS,
   ALLOWED_TRIGGERS,
   isValidEmail,
+  isValidPhone,
   isValidUrl,
   validateChannel,
   validateTrigger,
@@ -66,9 +67,13 @@ export function createApp() {
       return res.status(400).json({ error: "destination must be a valid http or https URL" });
     }
 
+    if (body.channel === "sms" && !isValidPhone(body.destination)) {
+      return res.status(400).json({ error: "destination must be a valid E.164 phone number (e.g. +14155552671)" });
+    }
+
     const subscription = createSubscription({
       stellar_address: body.stellar_address,
-      channel: body.channel as "email" | "webhook",
+      channel: body.channel as "email" | "webhook" | "sms",
       destination: body.destination,
       triggers: triggers as NotificationTrigger[],
     });

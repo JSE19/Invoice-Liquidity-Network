@@ -65,7 +65,7 @@ function runMigrations(db: SQLiteDatabase): void {
     CREATE TABLE IF NOT EXISTS subscriptions (
       id              INTEGER PRIMARY KEY,
       stellar_address TEXT    NOT NULL,
-      channel         TEXT    NOT NULL CHECK (channel IN ('email', 'webhook')),
+      channel         TEXT    NOT NULL CHECK (channel IN ('email', 'webhook', 'sms')),
       destination     TEXT    NOT NULL,
       triggers        TEXT    NOT NULL,
       created_at      INTEGER NOT NULL
