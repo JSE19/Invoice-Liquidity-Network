@@ -117,15 +117,24 @@ describe.skipIf(!canRun)("SDK testnet integration (#233)", () => {
   // Shared across the lifecycle tests so each one builds on the previous.
   let sharedInvoiceId: bigint;
 
-  const freelancerSigner = createKeypairSigner(FREELANCER_SECRET!);
-  const payerSigner = createKeypairSigner(PAYER_SECRET!);
-  const funderSigner = createKeypairSigner(FUNDER_SECRET!);
+  let freelancerSigner: any;
+  let payerSigner: any;
+  let funderSigner: any;
 
-  const freelancerSdk = new ILNSdk({ ...ILN_TESTNET, signer: freelancerSigner });
-  const payerSdk = new ILNSdk({ ...ILN_TESTNET, signer: payerSigner });
-  const funderSdk = new ILNSdk({ ...ILN_TESTNET, signer: funderSigner });
+  let freelancerSdk: any;
+  let payerSdk: any;
+  let funderSdk: any;
 
   beforeAll(async () => {
+    if (!canRun) return;
+    freelancerSigner = createKeypairSigner(FREELANCER_SECRET!);
+    payerSigner = createKeypairSigner(PAYER_SECRET!);
+    funderSigner = createKeypairSigner(FUNDER_SECRET!);
+
+    freelancerSdk = new ILNSdk({ ...ILN_TESTNET, signer: freelancerSigner });
+    payerSdk = new ILNSdk({ ...ILN_TESTNET, signer: payerSigner });
+    funderSdk = new ILNSdk({ ...ILN_TESTNET, signer: funderSigner });
+
     freelancerAddress = await freelancerSigner.getPublicKey();
     payerAddress = await payerSigner.getPublicKey();
     funderAddress = await funderSigner.getPublicKey();

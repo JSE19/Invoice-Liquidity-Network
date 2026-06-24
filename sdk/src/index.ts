@@ -10,3 +10,5 @@ export * from "./analytics-computations";
 export * from "./compatibility";
 export * from "./federation";
 export * from "./governance";
+export * from "./errors";
+export type { GovernanceProposal, ProposalStatus } from "./types";

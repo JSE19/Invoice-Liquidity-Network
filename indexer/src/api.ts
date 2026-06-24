@@ -7,6 +7,7 @@ import {
   getProtocolStats,
   getTopLPs,
   queryInvoices,
+  queryInvoicesPaginated,
 } from "./db";
 import { cacheGet, cacheSet } from "./cache";
 
@@ -30,14 +31,16 @@ export function createApp(): express.Application {
   //   ?freelancer=G...
   //   ?payer=G...
   //   ?funder=G...
+  //   ?limit=10 (default 100 max) & ?cursor=opaque
   app.get("/invoices", async (req: Request, res: Response) => {
-    const { status, freelancer, payer, funder } = req.query;
+    const { status, freelancer, payer, funder, limit: rawLimit, cursor } = req.query;
 
     const s = typeof status === "string" ? status : "";
     const fl = typeof freelancer === "string" ? freelancer : "";
     const pa = typeof payer === "string" ? payer : "";
     const fu = typeof funder === "string" ? funder : "";
-    const cacheKey = `invoices:${s}:${fl}:${pa}:${fu}`;
+    const limit = typeof rawLimit === "string" ? Math.min(parseInt(rawLimit, 10) || 100, 100) : 100;
+    const cacheKey = `invoices:${s}:${fl}:${pa}:${fu}:limit=${limit}:cursor=${cursor ?? ""}`;
 
     const cached = await cacheGet(cacheKey);
     if (cached) {
@@ -45,14 +48,18 @@ export function createApp(): express.Application {
       return;
     }
 
-    const invoices = queryInvoices({
-      status: s || undefined,
-      freelancer: fl || undefined,
-      payer: pa || undefined,
-      funder: fu || undefined,
-    });
+    const { invoices, hasMore, nextCursor } = queryInvoicesPaginated(
+      {
+        status: s || undefined,
+        freelancer: fl || undefined,
+        payer: pa || undefined,
+        funder: fu || undefined,
+      },
+      limit,
+      typeof cursor === "string" ? cursor : undefined,
+    );
 
-    const result = { invoices };
+    const result = { invoices, hasMore, nextCursor };
     await cacheSet(cacheKey, JSON.stringify(result));
     res.json(result);
   });

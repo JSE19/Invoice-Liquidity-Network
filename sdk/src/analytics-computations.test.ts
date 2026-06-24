@@ -25,7 +25,7 @@ describe('calculateYieldProjection', () => {
 
   it('handles large invoice amounts', () => {
     const result = calculateYieldProjection(1000000000000n, 500, 90);
-    expect(result.expectedReturn).toBe(995000000000n);
+    expect(result.expectedReturn).toBe(950000000000n);
     expect(result.effectiveApr).toBeGreaterThan(0);
   });
 

@@ -23,10 +23,25 @@ import type {
   SubmitInvoiceParams,
   TransactionSigner,
   CompatibilityResult,
+  ContractEvent,
 } from "./types";
 
+import { openSSE } from "./stream";
+
+export type EventCallback = (event: ContractEvent) => void | Promise<void>;
+export type Unsubscribe = () => void;
+
 import { checkCompatibility } from "./compatibility";
-import { GenericContractError, parseContractError } from "./errors";
+import {
+  GenericContractError,
+  parseContractError,
+  InsufficientBalanceError,
+  NetworkError,
+  TransactionFailedError,
+  ValidationError,
+  WalletNotConnectedError,
+  ILNError,
+} from "./errors";
 import {
   resolveRequestTimeouts,
   TimeoutError,
@@ -56,6 +71,7 @@ export class ILNSdk {
   private readonly signer?: TransactionSigner;
   private readonly requestTimeouts: RequestTimeouts;
   private protocolConfigCache: { expiresAt: number; value: ProtocolConfig } | null = null;
+  private readonly logger = createLogger("client");
 
   constructor(config: ILNSdkConfig) {
     this.contractId = config.contractId;
@@ -64,6 +80,37 @@ export class ILNSdk {
     this.rpcUrl = config.rpcUrl;
     this.signer = config.signer;
     this.requestTimeouts = resolveRequestTimeouts(config);
+  }
+
+  private async wrapRpcCall<T>(promise: Promise<T>, operationName: string): Promise<T> {
+    try {
+      return await promise;
+    } catch (error: any) {
+      if (error instanceof ILNError) {
+        throw error;
+      }
+      const errMsg = this.toErrorMessage(error);
+      if (error instanceof TimeoutError) {
+        throw error;
+      }
+      if (errMsg.toLowerCase().includes("insufficient balance") || errMsg.toLowerCase().includes("insufficient_balance") || errMsg.toLowerCase().includes("underfunded")) {
+        throw new InsufficientBalanceError(`Insufficient balance for ${operationName}: ${errMsg}`);
+      }
+      if (
+        error.status === 404 ||
+        error.status === 502 ||
+        error.status === 503 ||
+        error.status === 504 ||
+        errMsg.includes("fetch failed") ||
+        errMsg.includes("NetworkError") ||
+        errMsg.includes("ENOTFOUND") ||
+        errMsg.includes("ECONNREFUSED") ||
+        errMsg.includes("request failed")
+      ) {
+        throw new NetworkError(`Network error during ${operationName}: ${errMsg}`);
+      }
+      throw new TransactionFailedError(`Transaction failed during ${operationName}: ${errMsg}`);
+    }
   }
 
   public buildSubmitInvoiceOperation(params: SubmitInvoiceParams): TransactionOperation {
@@ -96,17 +143,17 @@ export class ILNSdk {
     ]);
   }
 
-  public async batch(operations: TransactionOperation[]): Promise<BuiltTransaction> {
+  public  async batch(operations: TransactionOperation[]): Promise<BuiltTransaction> {
     if (operations.length === 0) {
-      throw new Error("Batch must contain at least one operation.");
+      throw new ValidationError("Batch must contain at least one operation.");
     }
 
     if (operations.length > 100) {
-      throw new Error("Batch cannot contain more than 100 operations.");
+      throw new ValidationError("Batch cannot contain more than 100 operations.");
     }
 
     const sourceAddress = await this.resolveBatchSourceAddress(operations);
-    const sourceAccount = (await this.server.getAccount(sourceAddress)) as Account;
+    const sourceAccount = (await this.wrapRpcCall(this.server.getAccount(sourceAddress), "getAccount")) as Account;
 
     const transactionBuilder = new TransactionBuilder(sourceAccount, {
       fee: BASE_FEE,
@@ -118,7 +165,7 @@ export class ILNSdk {
     }
 
     const transaction = transactionBuilder.setTimeout(30).build();
-    const simulation = await this.server.simulateTransaction(transaction);
+    const simulation = await this.wrapRpcCall(this.server.simulateTransaction(transaction), "simulateTransaction");
     this.validateBatchSimulation(simulation);
 
     return transaction;
@@ -147,13 +194,13 @@ export class ILNSdk {
     if (sources.length > 0) {
       const uniqueSources = [...new Set(sources)];
       if (uniqueSources.length !== 1) {
-        throw new Error("All operations in a batch must originate from the same source account.");
+        throw new ValidationError("All operations in a batch must originate from the same source account.");
       }
       return uniqueSources[0];
     }
 
     if (!this.signer) {
-      throw new Error(
+      throw new WalletNotConnectedError(
         "Batch requires at least one operation source or a configured transaction signer.",
       );
     }
@@ -172,7 +219,7 @@ export class ILNSdk {
     }
 
     try {
-      return Address.account(sourceAccount._value).toString();
+      return Address.account(sourceAccount._value as any).toString();
     } catch {
       return undefined;
     }
@@ -191,7 +238,7 @@ export class ILNSdk {
   async checkCompatibility(): Promise<CompatibilityResult> {
     const invoke = async (method: string): Promise<any> => {
       const transaction = this.buildReadTransaction(method, []);
-      const simulation = await this.server.simulateTransaction(transaction);
+      const simulation = await this.wrapRpcCall(this.server.simulateTransaction(transaction), "simulateTransaction");
       return scValToNative(this.extractSimulationRetval(simulation, method));
     };
 
@@ -256,7 +303,7 @@ export class ILNSdk {
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.freelancer) {
-      throw new Error("submitInvoice must be signed by the freelancer address.");
+      throw new ValidationError("submitInvoice must be signed by the freelancer address.");
     }
 
     const transaction = await this.buildWriteTransaction(params.freelancer, "submit_invoice", [
@@ -285,7 +332,7 @@ export class ILNSdk {
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
-      throw new Error("fundInvoice must be signed by the funder address.");
+      throw new ValidationError("fundInvoice must be signed by the funder address.");
     }
 
     const transaction = await this.buildWriteTransaction(params.funder, "fund_invoice", [
@@ -335,7 +382,7 @@ export class ILNSdk {
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
-      throw new Error("claimDefault must be signed by the funder address.");
+      throw new ValidationError("claimDefault must be signed by the funder address.");
     }
 
     const transaction = await this.buildWriteTransaction(params.funder, "claim_default", [
@@ -479,7 +526,7 @@ export class ILNSdk {
 
   private async requireSignerAddress(): Promise<string> {
     if (!this.signer) {
-      throw new Error("A transaction signer is required for state-changing contract calls.");
+      throw new WalletNotConnectedError("A transaction signer is required for state-changing contract calls.");
     }
 
     return this.signer.getPublicKey();
@@ -488,18 +535,14 @@ export class ILNSdk {
   private async prepareTransaction(
     transaction: BuiltTransaction,
   ): Promise<PreparedTransactionLike> {
-    try {
-      return await withTimeout(
+    return this.wrapRpcCall(
+      withTimeout(
         "prepareTransaction",
         this.requestTimeouts.writeMs,
         this.server.prepareTransaction(transaction),
-      );
-    } catch (error) {
-      if (error instanceof TimeoutError) {
-        throw error;
-      }
-      throw new Error(`Failed to prepare contract transaction: ${this.toErrorMessage(error)}`);
-    }
+      ),
+      "prepareTransaction"
+    );
   }
 
   private async signAndSend(
@@ -509,7 +552,7 @@ export class ILNSdk {
   ): Promise<void> {
     const signer = this.signer;
     if (!signer) {
-      throw new Error("A transaction signer is required for state-changing contract calls.");
+      throw new WalletNotConnectedError("A transaction signer is required for state-changing contract calls.");
     }
 
     const signedXdr = await signer.signTransaction(preparedTransaction.toXDR(), {
@@ -520,10 +563,13 @@ export class ILNSdk {
       signedXdr,
       this.networkPassphrase,
     );
-    const response = (await withTimeout(
-      "sendTransaction",
-      this.requestTimeouts.writeMs,
-      this.server.sendTransaction(signedTransaction),
+    const response = (await this.wrapRpcCall(
+      withTimeout(
+        "sendTransaction",
+        this.requestTimeouts.writeMs,
+        this.server.sendTransaction(signedTransaction),
+      ),
+      "sendTransaction"
     )) as {
       errorResultXdr?: string;
       hash?: string;
@@ -539,21 +585,24 @@ export class ILNSdk {
     }
 
     if (!response.hash || !response.status) {
-      throw new Error("RPC server returned an invalid sendTransaction response.");
+      throw new TransactionFailedError("RPC server returned an invalid sendTransaction response.");
     }
 
     if (response.status !== "PENDING" && response.status !== "DUPLICATE") {
-      throw new Error(
+      throw new TransactionFailedError(
         `Transaction submission failed with status ${response.status}. ${response.errorResultXdr ?? ""}`.trim(),
       );
     }
 
-    const finalStatus = (await withTimeout(
-      "pollTransaction",
-      this.requestTimeouts.writeMs,
-      this.server.pollTransaction(response.hash, {
-        attempts: POLL_ATTEMPTS,
-      }),
+    const finalStatus = (await this.wrapRpcCall(
+      withTimeout(
+        "pollTransaction",
+        this.requestTimeouts.writeMs,
+        this.server.pollTransaction(response.hash, {
+          attempts: POLL_ATTEMPTS,
+        }),
+      ),
+      "pollTransaction"
     )) as {
       resultXdr?: string;
       status?: string;
@@ -564,7 +613,7 @@ export class ILNSdk {
     }
 
     if (finalStatus.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-      throw new Error(
+      throw new TransactionFailedError(
         `Transaction did not succeed. Final status: ${String(finalStatus.status)}.`,
       );
     }
@@ -616,10 +665,13 @@ export class ILNSdk {
     method: string,
     transaction: BuiltTransaction,
   ): Promise<unknown> {
-    return withTimeout(
-      `simulateTransaction:${method}`,
-      this.requestTimeouts.readMs,
-      this.server.simulateTransaction(transaction),
+    return this.wrapRpcCall(
+      withTimeout(
+        `simulateTransaction:${method}`,
+        this.requestTimeouts.readMs,
+        this.server.simulateTransaction(transaction),
+      ),
+      `simulateReadTransaction:${method}`
     );
   }
 
@@ -627,10 +679,13 @@ export class ILNSdk {
     method: string,
     transaction: BuiltTransaction,
   ): Promise<unknown> {
-    return withTimeout(
-      `simulateTransaction:${method}`,
-      this.requestTimeouts.simulationMs,
-      this.server.simulateTransaction(transaction),
+    return this.wrapRpcCall(
+      withTimeout(
+        `simulateTransaction:${method}`,
+        this.requestTimeouts.simulationMs,
+        this.server.simulateTransaction(transaction),
+      ),
+      `simulateWriteTransaction:${method}`
     );
   }
 
@@ -748,7 +803,7 @@ export class ILNSdk {
       const error = (value as { err: unknown }).err;
       const parsedError = parseContractError(error);
       if (parsedError instanceof GenericContractError) {
-        throw new Error(
+        throw new TransactionFailedError(
           `Contract method ${method} returned an error: ${this.formatContractError(error)}.`,
         );
       }
@@ -758,7 +813,7 @@ export class ILNSdk {
       const error = (value as { Err: unknown }).Err;
       const parsedError = parseContractError(error);
       if (parsedError instanceof GenericContractError) {
-        throw new Error(
+        throw new TransactionFailedError(
           `Contract method ${method} returned an error: ${this.formatContractError(error)}.`,
         );
       }

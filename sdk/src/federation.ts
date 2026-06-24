@@ -72,7 +72,8 @@ export async function lookupFederationAddress(gAddress: string): Promise<string 
       throw new FederationResolutionError('Invalid Federation address format');
     }
     if (msg.includes('not found') || msg.includes('404')) {
-      throw new FederationResolutionError('Server not found');
+      lookupCache.set(gAddress, { value: null, timestamp: Date.now() });
+      return null;
     }
     lookupCache.set(gAddress, { value: null, timestamp: Date.now() });
     return null;

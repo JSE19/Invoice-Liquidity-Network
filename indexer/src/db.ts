@@ -170,6 +170,69 @@ export function queryInvoices(filter: InvoiceFilter): Invoice[] {
     .all(...params) as Invoice[];
 }
 
+/**
+ * Paginated version of queryInvoices.
+ * Returns up to `limit` invoices after the given cursor (exclusive).
+ * Provides `hasMore` flag and opaque `nextCursor` for client use.
+ */
+export function queryInvoicesPaginated(
+  filter: InvoiceFilter,
+  limit: number,
+  cursor?: string,
+): { invoices: Invoice[]; hasMore: boolean; nextCursor?: string } {
+  const db = getDb();
+  const clauses: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filter.status) {
+    clauses.push("status = ?");
+    params.push(filter.status);
+  }
+  if (filter.freelancer) {
+    clauses.push("freelancer = ?");
+    params.push(filter.freelancer);
+  }
+  if (filter.payer) {
+    clauses.push("payer = ?");
+    params.push(filter.payer);
+  }
+  if (filter.funder) {
+    clauses.push("funder = ?");
+    params.push(filter.funder);
+  }
+
+  // Decode the opaque cursor (base64 encoded id)
+  let cursorId: number | undefined;
+  if (cursor) {
+    try {
+      const decoded = Buffer.from(cursor, "base64").toString("utf-8");
+      cursorId = Number(decoded);
+      if (Number.isNaN(cursorId)) {
+        cursorId = undefined;
+      }
+    } catch {
+      cursorId = undefined;
+    }
+  }
+
+  if (cursorId !== undefined) {
+    clauses.push("id > ?");
+    params.push(cursorId);
+  }
+
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  // Fetch one extra row to determine hasMore
+  const rows = db
+    .prepare(`SELECT * FROM invoices ${where} ORDER BY id ASC LIMIT ?`)
+    .all(...params, limit + 1) as Invoice[];
+
+  const hasMore = rows.length > limit;
+  const sliced = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? Buffer.from(String(sliced[sliced.length - 1].id)).toString("base64") : undefined;
+
+  return { invoices: sliced, hasMore, nextCursor };
+}
+
 export interface ProtocolStats {
   totalInvoices: number;
   totalVolume: string;
@@ -282,7 +345,7 @@ export function getInvoiceHistory(
   return queryInvoices({ [role]: address });
 }
 
-export function getTopLPs(limit: number, period: string): LPStat[] {
+
   const now = Date.now();
   const since =
     period === "week"
