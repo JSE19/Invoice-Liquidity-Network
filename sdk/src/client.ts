@@ -32,6 +32,8 @@ import type {
 } from "./types";
 
 import { openSSE } from "./stream";
+import { ILNEventEmitter } from "./event-emitter";
+import type { InvoiceEventData, WalletEventData, ErrorEventData } from "./event-emitter";
 
 export type EventCallback = (event: ContractEvent) => void | Promise<void>;
 export type Unsubscribe = () => void;
@@ -476,6 +478,10 @@ export class ILNSdk {
     });
 
     return () => handle.close();
+  }
+
+  createEventEmitter(options?: { maxHistorySize?: number }): ILNEventEmitter {
+    return new ILNEventEmitter(options);
   }
 
   async submitInvoice(params: SubmitInvoiceParams): Promise<bigint> {
