@@ -4,7 +4,7 @@ import { Command } from "commander";
 
 import { parseDisplayAmount } from "./amounts";
 import { ILNClient } from "./client";
-import { loadConfig } from "./config";
+import { loadConfig, initConfig } from "./config";
 import { parseDueDate } from "./dates";
 import { LocalDevEnvironment } from "./dev-environment";
 import { formatUnknownError } from "./errors";
@@ -32,6 +32,7 @@ import type { Ui } from "./format";
 import type { ResolvedConfig, RpcServerLike } from "./types";
 
 import { checkCompatibility } from "@invoice-liquidity/sdk";
+import { runInteractive } from "./interactive";
 
 export interface CliDependencies {
   createClient(config: ResolvedConfig): ILNClient;
@@ -417,7 +418,7 @@ export async function runCli(
     });
 
   program
-    .command("config")
+    .command("protocol-config")
     .description("Show live protocol configuration from the ILN contract.")
     .addHelpText(
       "after",
@@ -435,6 +436,34 @@ export async function runCli(
       const client = createClient(load());
       const config = await client.getProtocolConfig();
       ui.info(formatProtocolConfig(config));
+    });
+
+  // Config file management
+  const configCommand = program
+    .command("config")
+    .description("Manage the local ILN config file (.ilnrc.json).");
+
+  configCommand
+    .command("init")
+    .description("Generate a starter .ilnrc.json config file in the current directory.")
+    .option("--cwd <dir>", "directory to write the config file into (defaults to current directory)")
+    .action((options: { cwd?: string }) => {
+      const targetCwd = options.cwd ?? process.cwd();
+      const created = initConfig(targetCwd);
+      ui.success(`Created ${created}`);
+      ui.info("Edit the file to set your contract IDs and keypair path, then run any iln command.");
+    });
+
+  configCommand
+    .command("show")
+    .description("Show the resolved configuration that would be used for the current directory.")
+    .action(() => {
+      const config = load();
+      ui.info(describeConfig(config));
+      ui.info(`  keypairPath  ${config.keypairPath}`);
+      if (config.tokenId) {
+        ui.info(`  tokenId      ${config.tokenId}`);
+      }
     });
 
   const xdrCommand = program.command("xdr").description("Inspect Soroban XDR values");
@@ -639,6 +668,14 @@ export async function runCli(
       await seeder.seed({ scenario: options.scenario, count, token: options.token });
     });
 
+  // Interactive mode
+  program
+    .command("interactive")
+    .description("Start an interactive guided session for invoice operations.")
+    .action(async () => {
+      const config = load();
+      const client = createClient(config);
+      await runInteractive({ client, config, ui });
   program
     .command("man")
     .description("Print a roff man page for iln or a subcommand.")
