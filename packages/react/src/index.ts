@@ -39,3 +39,6 @@ export type {
   UseGovernanceProposalResult,
   UseTokenBalancesResult,
 } from './hooks';
+
+// Components
+export * from './components/NotificationCenter';
