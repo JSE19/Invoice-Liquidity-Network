@@ -15,13 +15,16 @@ import {
   formatHistoryJson,
   formatHistoryTable,
   formatInvoiceDetails,
+  formatInvoiceDetailsJson,
   formatInvoiceList,
+  formatInvoiceListJson,
   formatProtocolConfig,
   helpExample,
   helpSection,
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
+import { registerCompletionCommand } from "./completion";
 import { createKeypairFileSigner } from "./signer";
 import { TestnetAccountSeeder } from "./dev-seed";
 import type { Ui } from "./format";
@@ -109,21 +112,12 @@ export async function runCli(
     .description("Invoice Liquidity Network CLI")
     .exitOverride()
     .showHelpAfterError()
-    .option("--json", "reserved for future machine-readable output")
-    .addHelpText(
-      "after",
-      [
-        "",
-        helpSection("Quick tips:"),
-        helpExample("Run `iln dev start` to spin up a local environment with a deployed contract."),
-        helpExample("Run `iln dev seed` to create funded testnet accounts (freelancer, payer, LP)."),
-        helpExample("Set ILN_KEYPAIR_PATH, ILN_CONTRACT_ID, and ILN_NETWORK env vars instead of .iln.json."),
-        helpExample("Add --help to any subcommand for examples and usage details."),
-        helpExample("Use `iln dashboard` to monitor invoice activity in real time."),
-      ].join("\n"),
-    )
+    .option("--json", "output machine-readable JSON (applies to: status, list)")
+    .option("--quiet", "suppress informational messages; show only command output")
     .hook("preAction", (_thisCommand, actionCommand) => {
-      const isConfiglessXdrCommand =
+      registerCompletionCommand(program);
+
+  const isConfiglessXdrCommand =
         actionCommand.name() === "decode" && actionCommand.parent?.name() === "xdr";
       if (
         actionCommand.name() === "man" ||
@@ -136,7 +130,10 @@ export async function runCli(
 
       try {
         const config = load();
-        ui.info(`Using ${describeConfig(config)}`);
+        const opts = program.opts() as { quiet?: boolean };
+        if (!opts.quiet) {
+          ui.info(`Using ${describeConfig(config)}`);
+        }
       } catch (error) {
         throw error;
       }
@@ -260,7 +257,8 @@ export async function runCli(
     .action(async (options: { id: string }) => {
       const client = createClient(load());
       const invoice = await client.getInvoice(parseInvoiceId(options.id));
-      ui.info(formatInvoiceDetails(invoice));
+      const opts = program.opts() as { json?: boolean };
+      ui.info(opts.json ? formatInvoiceDetailsJson(invoice) : formatInvoiceDetails(invoice));
     });
 
   program
@@ -284,7 +282,8 @@ export async function runCli(
       assertStellarAddress(options.address, "address");
       const client = createClient(load());
       const invoices = await client.listInvoicesByAddress(options.address);
-      ui.info(formatInvoiceList(invoices));
+      const opts = program.opts() as { json?: boolean };
+      ui.info(opts.json ? formatInvoiceListJson(invoices) : formatInvoiceList(invoices));
     });
 
   program
@@ -358,8 +357,9 @@ export async function runCli(
           invoices = invoices.slice(0, limit);
         }
 
+        const globalOpts = program.opts() as { json?: boolean };
         const output =
-          options.format === "json"
+          options.format === "json" || globalOpts.json
             ? formatHistoryJson(invoices)
             : formatHistoryTable(invoices);
 
@@ -391,7 +391,7 @@ export async function runCli(
     .action(async () => {
       const config = load();
       const client = createClient(config);
-      
+
       ui.info("Checking contract compatibility...");
       const result = await checkCompatibility(async (method: string) => {
         if (method === "get_version") {
@@ -402,7 +402,7 @@ export async function runCli(
 
       ui.info(`SDK Version:      ${result.sdkVersion}`);
       ui.info(`Contract Version: ${result.contractVersion}`);
-      
+
       if (result.compatible) {
         ui.success("Compatibility check passed! The SDK is fully compatible with the deployed contract.");
       } else {
@@ -504,6 +504,58 @@ export async function runCli(
         });
       }
     });
+
+  // Generate command — template system for boilerplate code
+  const collectVars = (val: string, prev: string[]): string[] => [...prev, val];
+
+  program
+    .command("generate")
+    .description("Generate boilerplate code from a built-in or custom template.")
+    .argument("[template]", "template name (omit or use --list to see available templates)")
+    .option("--list", "list available templates and exit")
+    .option("--preview", "print generated output without writing to disk")
+    .option("--out <dir>", "output directory (default: current directory)", ".")
+    .option("--var <key=value>", "set a template variable, repeatable (e.g. --var contractId=C…)", collectVars, [] as string[])
+    .action(
+      async (
+        template: string | undefined,
+        options: { list?: boolean; preview?: boolean; out: string; var: string[] },
+      ) => {
+        const { generate, listTemplates } = await import("./generate");
+
+        if (options.list || !template) {
+          const templates = listTemplates();
+          ui.info("Available templates:\n");
+          for (const t of templates) {
+            ui.info(`  ${t.name.padEnd(24)} ${t.description}`);
+          }
+          if (!template && !options.list) {
+            ui.info('\nUsage: iln generate <template> [--var key=value] [--preview] [--out <dir>]');
+          }
+          return;
+        }
+
+        const vars: Record<string, string> = {};
+        for (const assignment of options.var) {
+          const eq = assignment.indexOf("=");
+          if (eq !== -1) vars[assignment.slice(0, eq)] = assignment.slice(eq + 1);
+        }
+
+        const result = generate({
+          template,
+          vars,
+          outDir: options.out,
+          preview: options.preview,
+        });
+
+        if (options.preview) {
+          ui.info(`--- Preview: ${result.outputFile} ---\n`);
+          stdout.write(result.content);
+        } else {
+          ui.success(`Generated ${result.outputFile}`);
+        }
+      },
+    );
 
   // Development commands
   const devCommand = program.command("dev").description("Development utilities");

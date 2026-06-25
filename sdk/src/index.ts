@@ -15,3 +15,13 @@ export * from "./governance";
 export * from "./errors";
 export type { GovernanceProposal, ProposalStatus } from "./types";
 export * from "./offline";
+export * from "./event-emitter";
+export { InvoiceDashboard } from "./InvoiceDashboard";
+export type {
+  InvoiceDashboardProps,
+  LiveInvoiceEvent,
+  InvoiceEventType,
+  DashboardMetrics,
+  MetricKey,
+  DashboardTheme,
+} from "./InvoiceDashboard";

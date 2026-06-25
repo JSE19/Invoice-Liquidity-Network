@@ -4,6 +4,8 @@ import { invalidateInvoiceCache } from "./cache";
 import { fetchInvoice } from "./rpc";
 import type { ILNEvent, ILNEventType } from "./types";
 import { pubsub, INVOICE_UPDATED, EVENT_STREAM } from "./graphql/pubsub";
+import { pubSub } from "./pubsub";
+import type { ILNEventType } from "./types";
 
 const KNOWN_EVENT_TYPES = new Set<ILNEventType>([
   "submitted",
@@ -66,5 +68,10 @@ export async function processEvent(
     await invalidateInvoiceCache(invoiceId);
     pubsub.publish(INVOICE_UPDATED, { invoiceUpdated: invoice, triggeringEvent: ilnEvent });
     pubsub.publish(EVENT_STREAM, { eventStream: ilnEvent });
+    if (eventType === "submitted") {
+      pubSub.publish("INVOICE_CREATED", invoice);
+    } else {
+      pubSub.publish("INVOICE_UPDATED", invoice);
+    }
   }
 }
