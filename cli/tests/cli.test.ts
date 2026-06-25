@@ -134,7 +134,7 @@ describe("runCli", () => {
       }),
     };
 
-    const exitCode = await runCli(["config"], {
+    const exitCode = await runCli(["protocol-config"], {
       createClient: () => client as any,
       loadConfig: () => TEST_CONFIG,
       stderr: createMemoryStream(),
