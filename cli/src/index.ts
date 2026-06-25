@@ -3,6 +3,7 @@ export { ILNClient } from "./client";
 export { loadConfig } from "./config";
 export { parseDueDate, formatTimestamp } from "./dates";
 export { createKeypairFileSigner } from "./signer";
+export { registerEnvCommands, getCurrentEnvironment, getEnvironment } from "./env";
 export type {
   ClientOptions,
   FileConfig,
@@ -13,4 +14,6 @@ export type {
   SubmitInvoiceInput,
   SupportedNetwork,
   TransactionSigner,
-} from "./types";
+  Environment,
+  EnvironmentConfig,
+} from "./env";

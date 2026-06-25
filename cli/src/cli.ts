@@ -22,6 +22,7 @@ import {
 } from "./format";
 import { registerInspectCommand } from "./inspect";
 import { registerCompletionCommand } from "./completion";
+import { registerEnvCommands } from "./env";
 import { createKeypairFileSigner } from "./signer";
 import { TestnetAccountSeeder } from "./dev-seed";
 import type { Ui } from "./format";
@@ -67,8 +68,9 @@ export async function runCli(
     .option("--quiet", "suppress informational messages; show only command output")
     .hook("preAction", (_thisCommand, actionCommand) => {
       registerCompletionCommand(program);
+      registerEnvCommands(program);
 
-  const isConfiglessXdrCommand =
+      const isConfiglessXdrCommand =
         actionCommand.name() === "decode" && actionCommand.parent?.name() === "xdr";
       if (
         isConfiglessXdrCommand ||

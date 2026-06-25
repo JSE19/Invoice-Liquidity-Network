@@ -11,6 +11,8 @@ import {
 } from "@stellar/stellar-sdk";
 import { createLogger } from "./logger";
 import { track } from "./usage-analytics";
+import { Cache, type CacheOptions } from "./cache";
+import { Validators } from "./validators";
 
 import type { Invoice, InvoiceState } from "@iln/shared";
 
@@ -80,6 +82,8 @@ export class ILNSdk {
   private protocolConfigCache: { expiresAt: number; value: ProtocolConfig } | null = null;
   private readonly logger = createLogger("client");
   private readonly analyticsNetwork: string;
+  private readonly cache: Cache<unknown>;
+  private readonly cacheEnabled: boolean;
 
   constructor(config: ILNSdkConfig) {
     this.contractId = config.contractId;
@@ -89,6 +93,10 @@ export class ILNSdk {
     this.signer = config.signer;
     this.requestTimeouts = resolveRequestTimeouts(config);
     this.analyticsNetwork = config.networkPassphrase.includes('Test SDF Network') ? 'testnet' : 'mainnet';
+    
+    const cacheConfig = config.cache ?? { ttl: 60000, storage: "memory", enabled: true };
+    this.cache = new Cache(cacheConfig);
+    this.cacheEnabled = cacheConfig.enabled ?? true;
   }
 
   private async wrapRpcCall<T>(promise: Promise<T>, operationName: string): Promise<T> {
@@ -485,6 +493,8 @@ export class ILNSdk {
   }
 
   async submitInvoice(params: SubmitInvoiceParams): Promise<bigint> {
+    Validators.assertValid(Validators.validateInvoiceSubmission(params), "submitInvoice");
+    
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.freelancer) {
@@ -512,6 +522,10 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, params.freelancer, "submitInvoice");
       track("submitInvoice", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after submission
+      this.cache.invalidate(`invoice:${invoiceId}`);
+      
       return invoiceId;
     } catch (err: any) {
       track("submitInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
@@ -520,6 +534,8 @@ export class ILNSdk {
   }
 
   async fundInvoice(params: FundInvoiceParams): Promise<void> {
+    Validators.assertValid(Validators.validateFunding(params), "fundInvoice");
+    
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
@@ -547,6 +563,10 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, params.funder, "fundInvoice");
       track("fundInvoice", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after funding
+      this.cache.invalidate(`invoice:${params.invoiceId}`);
+      
     } catch (err: any) {
       track("fundInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
@@ -554,6 +574,8 @@ export class ILNSdk {
   }
 
   async markPaid(params: MarkPaidParams): Promise<void> {
+    Validators.assertValid(Validators.validatePayment(params), "markPaid");
+    
     try {
       const payer = await this.requireSignerAddress();
       const transaction = await this.buildWriteTransaction(payer, "mark_paid", [
@@ -575,6 +597,10 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, payer, "markPaid");
       track("markPaid", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after payment
+      this.cache.invalidate(`invoice:${params.invoiceId}`);
+      
     } catch (err: any) {
       track("markPaid", this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
@@ -615,7 +641,17 @@ export class ILNSdk {
     }
   }
 
-  async getInvoice(invoiceId: bigint): Promise<Invoice> {
+  async getInvoice(invoiceId: bigint, options?: CacheOptions): Promise<Invoice> {
+    const cacheKey = `invoice:${invoiceId}`;
+    
+    // Try cache first
+    if (this.cacheEnabled && !options?.bypass) {
+      const cached = this.cache.get<Invoice>(cacheKey, options);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const transaction = this.buildReadTransaction("get_invoice", [
         nativeToScVal(invoiceId, { type: "u64" }),
@@ -628,6 +664,12 @@ export class ILNSdk {
 
       const result = this.extractInvoiceResult(simulation);
       track("getInvoice", this.analyticsNetwork, true);
+      
+      // Cache the result
+      if (this.cacheEnabled && !options?.bypass) {
+        this.cache.set(cacheKey, result);
+      }
+      
       return result;
     } catch (err: any) {
       track("getInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
@@ -1126,5 +1168,33 @@ export class ILNSdk {
     }
 
     return String(error);
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStatistics() {
+    return this.cache.getStatistics();
+  }
+
+  /**
+   * Clear all cache entries
+   */
+  clearCache() {
+    this.cache.clear();
+  }
+
+  /**
+   * Invalidate cache entries matching a pattern
+   */
+  invalidateCache(pattern?: string) {
+    return this.cache.invalidate(pattern);
+  }
+
+  /**
+   * Reset cache statistics
+   */
+  resetCacheStatistics() {
+    this.cache.resetStatistics();
   }
 }

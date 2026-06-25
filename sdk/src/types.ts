@@ -1,3 +1,5 @@
+import type { CacheConfig } from "./cache";
+
 export type {
   ContractEvent,
   ContractStats,
@@ -85,6 +87,11 @@ export interface ILNSdkConfig {
     writeMs?: number;
     simulationMs?: number;
   };
+  /**
+   * Cache configuration for network responses.
+   * Defaults to: { ttl: 60000, storage: "memory", enabled: true }
+   */
+  cache?: CacheConfig;
 }
 
 export interface NetworkConfig {
