@@ -236,7 +236,7 @@ export async function runCli(
     .action(async () => {
       const config = load();
       const client = createClient(config);
-      
+
       ui.info("Checking contract compatibility...");
       const result = await checkCompatibility(async (method: string) => {
         if (method === "get_version") {
@@ -247,7 +247,7 @@ export async function runCli(
 
       ui.info(`SDK Version:      ${result.sdkVersion}`);
       ui.info(`Contract Version: ${result.contractVersion}`);
-      
+
       if (result.compatible) {
         ui.success("Compatibility check passed! The SDK is fully compatible with the deployed contract.");
       } else {
@@ -310,6 +310,58 @@ export async function runCli(
         });
       }
     });
+
+  // Generate command — template system for boilerplate code
+  const collectVars = (val: string, prev: string[]): string[] => [...prev, val];
+
+  program
+    .command("generate")
+    .description("Generate boilerplate code from a built-in or custom template.")
+    .argument("[template]", "template name (omit or use --list to see available templates)")
+    .option("--list", "list available templates and exit")
+    .option("--preview", "print generated output without writing to disk")
+    .option("--out <dir>", "output directory (default: current directory)", ".")
+    .option("--var <key=value>", "set a template variable, repeatable (e.g. --var contractId=C…)", collectVars, [] as string[])
+    .action(
+      async (
+        template: string | undefined,
+        options: { list?: boolean; preview?: boolean; out: string; var: string[] },
+      ) => {
+        const { generate, listTemplates } = await import("./generate");
+
+        if (options.list || !template) {
+          const templates = listTemplates();
+          ui.info("Available templates:\n");
+          for (const t of templates) {
+            ui.info(`  ${t.name.padEnd(24)} ${t.description}`);
+          }
+          if (!template && !options.list) {
+            ui.info('\nUsage: iln generate <template> [--var key=value] [--preview] [--out <dir>]');
+          }
+          return;
+        }
+
+        const vars: Record<string, string> = {};
+        for (const assignment of options.var) {
+          const eq = assignment.indexOf("=");
+          if (eq !== -1) vars[assignment.slice(0, eq)] = assignment.slice(eq + 1);
+        }
+
+        const result = generate({
+          template,
+          vars,
+          outDir: options.out,
+          preview: options.preview,
+        });
+
+        if (options.preview) {
+          ui.info(`--- Preview: ${result.outputFile} ---\n`);
+          stdout.write(result.content);
+        } else {
+          ui.success(`Generated ${result.outputFile}`);
+        }
+      },
+    );
 
   // Development commands
   const devCommand = program.command("dev").description("Development utilities");
