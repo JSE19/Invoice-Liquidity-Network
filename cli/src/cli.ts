@@ -24,8 +24,16 @@ import {
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
+<<<<<<< HEAD
 import { registerCompletionCommand } from "./completion";
 import { registerEnvCommands } from "./env";
+import {
+  promptMissingArguments,
+  validateStellarAddress,
+  validatePositiveNumber,
+  validateBasisPoints,
+  validateDate,
+} from "./prompts";
 import { createKeypairFileSigner } from "./signer";
 import { TestnetAccountSeeder } from "./dev-seed";
 import {
@@ -152,11 +160,12 @@ export async function runCli(
   program
     .command("submit")
     .description("Submit a new invoice from the configured signer account.")
-    .requiredOption("--payer <address>", "payer Stellar address")
-    .requiredOption("--amount <amount>", "invoice amount in display units, for example 100 or 12.5")
-    .requiredOption("--due <date>", "due date as YYYY-MM-DD or Unix timestamp")
-    .requiredOption("--rate <bps>", "discount rate in basis points")
+    .option("--payer <address>", "payer Stellar address")
+    .option("--amount <amount>", "invoice amount in display units, for example 100 or 12.5")
+    .option("--due <date>", "due date as YYYY-MM-DD or Unix timestamp")
+    .option("--rate <bps>", "discount rate in basis points")
     .option("--token <contractId>", "override token contract ID from config")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -170,7 +179,7 @@ export async function runCli(
         helpExample("iln list --address <G>  List all invoices for your address"),
       ].join("\n"),
     )
-    .action(async (options: { amount: string; due: string; payer: string; rate: string; token?: string }) => {
+    .action(async (options: { amount?: string; due?: string; payer?: string; rate?: string; token?: string; yes?: boolean }) => {
       const config = load();
       const client = createClient(config);
       const tokenId = options.token ?? config.tokenId;
@@ -180,14 +189,62 @@ export async function runCli(
         );
       }
 
-      assertStellarAddress(options.payer, "payer");
+      // Prompt for missing required arguments in interactive mode
+      let payer = options.payer;
+      let amount = options.amount;
+      let due = options.due;
+      let rate = options.rate;
+
+      if (!options.yes && process.stdin.isTTY) {
+        const resolved = await promptMissingArguments(
+          [
+            {
+              name: "payer",
+              description: "Payer Stellar address (G...)",
+              required: true,
+              validate: validateStellarAddress,
+            },
+            {
+              name: "amount",
+              description: "Invoice amount in display units (e.g. 100 or 12.5)",
+              required: true,
+              validate: validatePositiveNumber,
+            },
+            {
+              name: "due",
+              description: "Due date as YYYY-MM-DD or Unix timestamp",
+              required: true,
+              validate: validateDate,
+            },
+            {
+              name: "rate",
+              description: "Discount rate in basis points (e.g. 500 = 5%)",
+              required: true,
+              defaultValue: "500",
+              validate: validateBasisPoints,
+            },
+          ],
+          { payer, amount, due, rate },
+        );
+
+        payer = resolved.payer;
+        amount = resolved.amount;
+        due = resolved.due;
+        rate = resolved.rate;
+      }
+
+      if (!payer || !amount || !due || !rate) {
+        throw new Error("Missing required arguments. Use --payer, --amount, --due, --rate or run interactively.");
+      }
+
+      assertStellarAddress(payer, "payer");
       assertContractId(tokenId, "token");
 
       const { invoiceId, txHash } = await client.submitInvoice({
-        amount: parseDisplayAmount(options.amount),
-        discountRate: parseBasisPoints(options.rate),
-        dueDate: parseDueDate(options.due),
-        payer: options.payer,
+        amount: parseDisplayAmount(amount),
+        discountRate: parseBasisPoints(rate),
+        dueDate: parseDueDate(due),
+        payer,
         tokenId,
       });
 
@@ -197,8 +254,9 @@ export async function runCli(
   program
     .command("fund")
     .description("Fund an invoice using the configured signer account.")
-    .requiredOption("--id <invoiceId>", "invoice ID")
+    .option("--id <invoiceId>", "invoice ID")
     .option("--amount <amount>", "amount to fund in display units; defaults to the remaining balance")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -212,19 +270,40 @@ export async function runCli(
         helpExample("iln history --address <G>  View your funding history"),
       ].join("\n"),
     )
-    .action(async (options: { amount?: string; id: string }) => {
+    .action(async (options: { amount?: string; id?: string; yes?: boolean }) => {
+      let invoiceId = options.id;
+
+      if (!options.yes && process.stdin.isTTY) {
+        const resolved = await promptMissingArguments(
+          [
+            {
+              name: "id",
+              description: "Invoice ID to fund",
+              required: true,
+              validate: validatePositiveInteger,
+            },
+          ],
+          { id: invoiceId },
+        );
+        invoiceId = resolved.id;
+      }
+
+      if (!invoiceId) {
+        throw new Error("Missing required argument: --id");
+      }
       const client = createClient(load());
       const result = await client.fundInvoice(
-        parseInvoiceId(options.id),
+        parseInvoiceId(invoiceId),
         options.amount ? parseDisplayAmount(options.amount) : undefined,
       );
-      ui.success(`Funded invoice ${options.id} in transaction ${result.hash}.`);
+      ui.success(`Funded invoice ${invoiceId} in transaction ${result.hash}.`);
     });
 
   program
     .command("pay")
     .description("Mark an invoice as paid using the configured signer account.")
-    .requiredOption("--id <invoiceId>", "invoice ID")
+    .option("--id <invoiceId>", "invoice ID")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -241,16 +320,37 @@ export async function runCli(
         helpExample("iln history --address <G>  View your payment history"),
       ].join("\n"),
     )
-    .action(async (options: { id: string }) => {
+    .action(async (options: { id?: string; yes?: boolean }) => {
+      let invoiceId = options.id;
+
+      if (!options.yes && process.stdin.isTTY) {
+        const resolved = await promptMissingArguments(
+          [
+            {
+              name: "id",
+              description: "Invoice ID to mark as paid",
+              required: true,
+              validate: validatePositiveInteger,
+            },
+          ],
+          { id: invoiceId },
+        );
+        invoiceId = resolved.id;
+      }
+
+      if (!invoiceId) {
+        throw new Error("Missing required argument: --id");
+      }
       const client = createClient(load());
-      const result = await client.markPaid(parseInvoiceId(options.id));
-      ui.success(`Marked invoice ${options.id} as paid in transaction ${result.hash}.`);
+      const result = await client.markPaid(parseInvoiceId(invoiceId));
+      ui.success(`Marked invoice ${invoiceId} as paid in transaction ${result.hash}.`);
     });
 
   program
     .command("status")
     .description("Show the current state of an invoice.")
-    .requiredOption("--id <invoiceId>", "invoice ID")
+    .option("--id <invoiceId>", "invoice ID")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -264,9 +364,30 @@ export async function runCli(
         helpExample("iln history --address <G>  View full action history"),
       ].join("\n"),
     )
-    .action(async (options: { id: string }) => {
+    .action(async (options: { id?: string; yes?: boolean }) => {
+      let invoiceId = options.id;
+
+      if (!options.yes && process.stdin.isTTY) {
+        const resolved = await promptMissingArguments(
+          [
+            {
+              name: "id",
+              description: "Invoice ID to check status",
+              required: true,
+              validate: validatePositiveInteger,
+            },
+          ],
+          { id: invoiceId },
+        );
+        invoiceId = resolved.id;
+      }
+
+      if (!invoiceId) {
+        throw new Error("Missing required argument: --id");
+      }
+
       const client = createClient(load());
-      const invoice = await client.getInvoice(parseInvoiceId(options.id));
+      const invoice = await client.getInvoice(parseInvoiceId(invoiceId));
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatInvoiceDetailsJson(invoice) : formatInvoiceDetails(invoice));
     });
@@ -274,7 +395,8 @@ export async function runCli(
   program
     .command("list")
     .description("List all invoices associated with a Stellar address.")
-    .requiredOption("--address <address>", "freelancer, payer, or funder Stellar address")
+    .option("--address <address>", "freelancer, payer, or funder Stellar address")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -288,10 +410,31 @@ export async function runCli(
         helpExample("iln status --id <id>       Inspect a specific invoice"),
       ].join("\n"),
     )
-    .action(async (options: { address: string }) => {
-      assertStellarAddress(options.address, "address");
+    .action(async (options: { address?: string; yes?: boolean }) => {
+      let address = options.address;
+
+      if (!options.yes && process.stdin.isTTY) {
+        const resolved = await promptMissingArguments(
+          [
+            {
+              name: "address",
+              description: "Stellar address to list invoices for",
+              required: true,
+              validate: validateStellarAddress,
+            },
+          ],
+          { address },
+        );
+        address = resolved.address;
+      }
+
+      if (!address) {
+        throw new Error("Missing required argument: --address");
+      }
+
+      assertStellarAddress(address, "address");
       const client = createClient(load());
-      const invoices = await client.listInvoicesByAddress(options.address);
+      const invoices = await client.listInvoicesByAddress(address);
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatInvoiceListJson(invoices) : formatInvoiceList(invoices));
     });
@@ -299,7 +442,7 @@ export async function runCli(
   program
     .command("history")
     .description("Show past invoice submissions, fundings, and payments for a Stellar address.")
-    .requiredOption("--address <address>", "Stellar address to query history for")
+    .option("--address <address>", "Stellar address to query history for")
     .option("--id <invoiceId>", "filter to a specific invoice ID")
     .option(
       "--action <type>",
@@ -307,6 +450,7 @@ export async function runCli(
     )
     .option("--limit <n>", "maximum number of results to return")
     .option("--format <fmt>", "output format: table (default) or json", "table")
+    .option("--yes", "skip interactive prompts and use defaults")
     .addHelpText(
       "after",
       [
@@ -322,13 +466,35 @@ export async function runCli(
     )
     .action(
       async (options: {
-        address: string;
+        address?: string;
         id?: string;
         action?: string;
         limit?: string;
         format: string;
+        yes?: boolean;
       }) => {
-        assertStellarAddress(options.address, "address");
+        let address = options.address;
+
+        if (!options.yes && process.stdin.isTTY) {
+          const resolved = await promptMissingArguments(
+            [
+              {
+                name: "address",
+                description: "Stellar address to query history for",
+                required: true,
+                validate: validateStellarAddress,
+              },
+            ],
+            { address },
+          );
+          address = resolved.address;
+        }
+
+        if (!address) {
+          throw new Error("Missing required argument: --address");
+        }
+
+        assertStellarAddress(address, "address");
 
         if (options.format !== "table" && options.format !== "json") {
           throw new Error("--format must be table or json");
@@ -347,7 +513,7 @@ export async function runCli(
         }
 
         const client = createClient(load());
-        let invoices = await client.listInvoicesByAddress(options.address);
+        let invoices = await client.listInvoicesByAddress(address);
 
         if (options.id !== undefined) {
           const targetId = parseInvoiceId(options.id);
