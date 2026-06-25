@@ -12,6 +12,7 @@ import {
   getCursorUpdatedAt,
 } from "./db";
 import { cacheGet, cacheSet } from "./cache";
+import { createGraphQLHandler } from "./graphql";
 import { createApiRateLimiter } from "./rateLimit";
 
 /**
@@ -26,6 +27,10 @@ export function createApp(): express.Application {
   app.set("trust proxy", 1);
   app.use(createApiRateLimiter());
   app.use(express.json());
+
+  // ── GraphQL (queries, mutations, subscriptions via SSE + GraphiQL) ──────────
+  const yoga = createGraphQLHandler();
+  app.use(yoga.graphqlEndpoint, yoga);
 
   const startTime = Date.now();
 
