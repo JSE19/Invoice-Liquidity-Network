@@ -3,14 +3,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { ILNSdk, ILN_TESTNET, createFreighterSigner } from "@iln/sdk";
-import type { Invoice, ProtocolConfig } from "@iln/sdk";
+import type { Invoice, ProtocolConfig, TransactionSigner } from "@iln/sdk";
 
 // ── SDK Singleton ────────────────────────────────────────────────────────────
+
+const freighterSigner = createFreighterSigner();
 
 function createSdk(): ILNSdk {
   return new ILNSdk({
     ...ILN_TESTNET,
-    signer: createFreighterSigner(),
+    signer: freighterSigner,
   });
 }
 
@@ -34,7 +36,7 @@ function InvoiceForm({ sdk, onSubmit, onError }: InvoiceFormProps) {
 
     try {
       const invoiceId = await sdk.submitInvoice({
-        freelancer: await sdk["signer"]?.getPublicKey() ?? "",
+        freelancer: await freighterSigner.getPublicKey(),
         payer,
         amount: BigInt(Math.floor(parseFloat(amount) * 10_000_000)),
         dueDate: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
