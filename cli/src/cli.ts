@@ -48,6 +48,7 @@ import type { ResolvedConfig, RpcServerLike } from "./types";
 
 import { checkCompatibility } from "@invoice-liquidity/sdk";
 import { runInteractive } from "./interactive";
+import { runTutorial } from "./tutorial";
 
 export interface CliDependencies {
   createClient(config: ResolvedConfig): ILNClient;
@@ -998,6 +999,33 @@ export async function runCli(
       const config = load();
       const client = createClient(config);
       await runInteractive({ client, config, ui });
+    });
+
+  // Tutorial mode
+  program
+    .command("tutorial")
+    .description("Step-by-step guided tutorial for submitting your first invoice.")
+    .addHelpText(
+      "after",
+      [
+        "",
+        helpSection("About:"),
+        helpExample("Walks you through each field with explanations at every step."),
+        helpExample("Progress is saved so you can resume if interrupted."),
+        helpExample("Type 'skip' at any prompt to exit and save your progress."),
+        "",
+        helpSection("Examples:"),
+        helpExample("iln tutorial              (start or resume the tutorial)"),
+        "",
+        helpSection("See also:"),
+        helpExample("iln interactive           Full interactive mode without explanations"),
+        helpExample("iln submit --help         Reference for the submit command"),
+      ].join("\n"),
+    )
+    .action(async () => {
+      const config = load();
+      const client = createClient(config);
+      await runTutorial({ client, config, ui });
     });
 
   program
